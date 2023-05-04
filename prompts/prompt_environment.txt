@@ -9,7 +9,7 @@ Example :
 2- Strict Ingredients: It will be stipulated if the recipe must only include the ingredients mentioned using the bracket "IngredientsStrict": "true", the value "true" will indicate if the recipe must only include the ingredients provided and "false" if you have the freedom to add ingredients.
 Example :
 """
-"strict_ingredients": "true"
+"is_strict_ingredients": "true"
 """
 
 3- List of ingredients: The list of ingredients will be provided in JSON format. This ingredient list will include the ingredient name, quantity, and unit of measure. If the measurement unit is set to null, it indicates that the value is a unit or not measurable, example ingredient, 1 apple, the ingredient value in JSON will be example:

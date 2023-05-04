@@ -131,7 +131,7 @@ Input:
     "identification": [
     "style of meal: vegetarian. Italian cuisine. 4 servings. duration around 45 minutes."
     ],
-    "strict_ingredients": "true",
+    "is_strict_ingredients": "true",
     "ingredients": [
         {
         "name": "canned chickpeas",

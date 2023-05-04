@@ -21,7 +21,7 @@ prompt_load_order = ['prompt_role',
                      'prompt_query']
 
 # Define the recipe_manager class
-class recipe_manager:
+class recipe_manager_ai:
     def __init__(self, credentials):
         # Set OpenAI API key
         openai.api_key = credentials["RecipeManager"]["OPENAI_KEY"]
@@ -95,7 +95,7 @@ class recipe_manager:
                 # Validate response input
                 if response not in ['', '1', '2', '3', '4']:
                     raise Exception("Invalid input. Please enter '' or '1, 2, 3, 4'.")
-
+                instructions = ""
                 # Process response
                 if response in valid_responses:
                     action = valid_responses[response]
@@ -111,14 +111,14 @@ class recipe_manager:
                 else:
                     raise Exception("Invalid response. Please leave it blank or '1', '2', '3', or '4'.") 
 
-                strict_ingredients = 'yes'
-                while strict_ingredients not in ['yes', 'no']:
-                    strict_ingredients = input("Should the ingredients be strict? Please enter 'yes' or 'no': ").lower()
-                    if not strict_ingredients == 'yes' or not strict_ingredients == 'no':
+                is_strict_ingredients = 'yes'
+                while is_strict_ingredients not in ['yes', 'no']:
+                    is_strict_ingredients = input("Should the ingredients be strict? Please enter 'yes' or 'no': ").lower()
+                    if not is_strict_ingredients == 'yes' or not is_strict_ingredients == 'no':
                         raise Exception("Invalid input. Please enter 'yes' or 'no'.")
                 
                 # Create a recipe prompt using the input from the request question and the ingridient in ingredient list
-                recipe_prompt = create_recipe_prompt(self, get_ingredient_list(), instructions, strict_ingredients)
+                recipe_prompt = create_recipe_prompt(self, get_ingredient_list(), instructions, is_strict_ingredients)
 
                 # Save the request to the database
                 save_request_to_db(recipe_prompt)
@@ -287,13 +287,15 @@ def delete_ingredient_to_local_memory(item_name):
     with open("items.json", "w") as f:
         json.dump(ingredient_list, f)
 
-def create_recipe_prompt(self, ingredient_list):
+def create_recipe_prompt(self, ingredient_list, instruction, is_strict_ingredients):
     """
     Create a recipe prompt using the input from the request question and the ingridient in ingredient list.
 
     Args:
-        ingredient_list (list): The list of ingredients to be used in the recipe prompt.
-
+        ingredient_list (list): The list of ingredients.
+        instruction (str): The instruction for the recipe.
+        is_strict_ingredients (bool): Whether to use the ingredients in the ingredient list or not.
+        
     Returns:
         str: The recipe prompt.
     """
@@ -303,8 +305,10 @@ def create_recipe_prompt(self, ingredient_list):
     # load the prompt files in the specified order
     prompt_loading(prompt)
 
-    # Create a recipe prompt using the input from the request question and the list of items
-    ingredients_prompt = ""
+    # add instruction and is_strict_ingredients to the prompt
+    ingredients_prompt = f'{{\n"instruction": "{instruction}"\n}}'
+    ingredients_prompt += f'{{\n"is_strict_ingredients": "{is_strict_ingredients}"\n}}'
+    
     for item in ingredient_list:
         item = json.loads(item)
         ingredients_prompt += f'{{\n  "name": "{item["name"]}",\n  "quantity": "{item["quantity"]}",\n  "unit_of_measure": "{item["unit_of_measure"]}"\n}}'
@@ -518,7 +522,7 @@ def get_ingredient_list():
 
 
 # Create an instance of RecipeManager
-recipe_manager = recipe_manager(credentials)
+recipe_manager_ai = recipe_manager_ai(credentials)
 
 # Run the application
-recipe_manager.run()
+recipe_manager_ai.run()
