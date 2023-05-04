@@ -9,11 +9,11 @@ import tiktoken
 enc = tiktoken.get_encoding("cl100k_base")
 
 # Load credentials from secrets.json file
-with open('secrets.json') as f:
+with open('secrets.json', 'r') as f:
     credentials = json.load(f)
 
 # Load credentials from configs.json file
-with open('configs.json') as f:
+with open('configs.json', 'r') as f:
     configs = json.load(f)
 # Define the directory where prompts will be stored
 dir_prompt = './prompts'
@@ -29,7 +29,7 @@ prompt_load_order = ['prompt_role',
 class recipe_manager_ai:
     def __init__(self, credentials, configs):
         # Set OpenAI API key
-        openai.api_key = credentials["RecipeManagerAI"]["OPENAI_KEY"]
+        openai.api_key = credentials["recipe_manager_ai"]["openai_api_key"]
         
         # Initialize list of ingredients
         self.ingredient_list = []
@@ -40,51 +40,57 @@ class recipe_manager_ai:
         # Initialize messages list
         self.messages = []
         
+        # get chat completion parameters in configs.json file
+        chat_completion = configs['configs']['recipe_manager_ai']['chat_completion']
         # Set maximum token length
-        self.max_token_length = configs["RecipeManagerAI"]["max_token_length"]
+        self.chat_completion_max_token_length = chat_completion['max_token_length']
         
         # Set maximum completion length
-        self.max_completion_length = configs["RecipeManagerAI"]["max_completion_length"]
+        self.chat_completion_max_completion_length = chat_completion["max_completion_length"]
         
         # Set temperature for text generation
-        self.temperature = configs["RecipeManagerAI"]["temperature"]
+        self.chat_completion_temperature = chat_completion["temperature"]
         
         # Set number of completions to generate
-        self.n=configs["RecipeManagerAI"]["n"]
+        self.chat_completion_n= chat_completion["n"]
         
         # Set top p value for text generation
-        self.top_p = configs["RecipeManagerAI"]["top_p"]
+        self.chat_completion_top_p = chat_completion["top_p"]
         
         # Set frequency penalty for text generation
-        self.frequency_penalty = configs["RecipeManagerAI"]["frequency_penalty"]
+        self.chat_completion_frequency_penalty = chat_completion["frequency_penalty"]
         
         # Set presence penalty for text generation
-        self.presence_penalty = configs["RecipeManagerAI"]["presence_penalty"]
+        self.chat_completion_presence_penalty = chat_completion["presence_penalty"]
         
         # Set stop token for text generation
-        self.stop = configs["RecipeManagerAI"]["stop"]
+        self.chat_completion_stop = chat_completion["stop"]
         
         # Set streaming mode to False
-        self.stream = configs["RecipeManagerAI"]["stream"]
+        self.chat_completion_stream = chat_completion["stream"]
         
         # Set number of best completions to return
-        self.best_of = configs["RecipeManagerAI"]["best_of"]
+        self.chat_completion_best_of = chat_completion["best_of"]
         
         # Set logprobs to 0
-        self.logprobs = configs["RecipeManagerAI"]["logprobs"]
+        self.chat_completion_logprobs = chat_completion["logprobs"]
         
         # Set echo mode to False
-        self.echo = configs["RecipeManagerAI"]["echo"]
+        self.chat_completion_echo = chat_completion["echo"]
         
         # Set model to use for text generation
-        self.model = configs["RecipeManagerAI"]["model"]
+        self.chat_completion_model = chat_completion["model"]
+
+        image_generation = configs['configs']['recipe_manager_ai']['image_generation']
+        self.image_generation_n = image_generation["n"]
+        self.image_generation_size = image_generation["size"]
 
     def run(self):
         """
         Run the recipe manager.
         """
         # Ask the user if they want to delete the list of ingredients from memory
-        response = input("Do you want to delete the list of ingredients from memory? Enter 1 if you want to delete, otherwise leave it blank.")
+        response = input("Do you want to delete the list of ingredients from memory? Enter 1 if you want to delete, otherwise leave it blank.: ")
         
         # If the user wants to delete the list of ingredients, call the delete_ingredients_to_local_memory function
         if response == "1":
@@ -95,11 +101,11 @@ class recipe_manager_ai:
                 valid_responses = {'': 'add_item', '1': 'add_item', '2': 'submit_recipe', '3': 'remove_item', '4': 'remove_all'}
 
                 # Ask the user if they want to continue or submit the recipe
-                response = input("Do you want to continue? (1: Yes, 2: Submit Recipe, 3: Remove an item from the list, 4: Remove all items from the list)")
+                response = input("Do you want to continue? (1: Yes, 2: Submit Recipe, 3: Remove an item from the list, 4: Remove all items from the list): ")
 
                 # Validate response input
                 if response not in ['', '1', '2', '3', '4']:
-                    raise Exception("Invalid input. Please enter '' or '1, 2, 3, 4'.")
+                    raise Exception("Invalid input. Please enter '' or '1, 2, 3, 4'.: ")
                 instructions = ""
                 # Process response
                 if response in valid_responses:
@@ -129,22 +135,22 @@ class recipe_manager_ai:
                         delete_ingredients_to_local_memory()
                         continue
                     elif action == 'submit_recipe':
-                        instructions = input("Please provide the necessary instruction for the recipe, such as the type of dish, the region, allergies, cooking time, number of servings, and any ingredients to avoid. For example: type of dessert, Italian cuisine, gluten-free, nut allergy, no cinnamon, 6 servings, preparation time of no more than 60 minutes, microwave cooking. Leave blank if there are no instructions.")
+                        instructions = input("Please provide the necessary instruction for the recipe, such as the type of dish, the region, allergies, cooking time, number of servings, and any ingredients to avoid. For example: type of dessert, Italian cuisine, gluten-free, nut allergy, no cinnamon, 6 servings, preparation time of no more than 60 minutes, microwave cooking. Leave blank if there are no instructions.: ")
                 
                         is_strict_ingredients = 'yes'
                         while is_strict_ingredients not in ['yes', 'no']:
                             is_strict_ingredients = input("Should the ingredients be strict? Please enter 'yes' or 'no': ").lower()
                             if not is_strict_ingredients == 'yes' or not is_strict_ingredients == 'no':
-                                raise Exception("Invalid input. Please enter 'yes' or 'no'.")
+                                raise Exception("Invalid input. Please enter 'yes' or 'no'.: ")
                         
                         # Create a recipe prompt using the input from the request question and the ingridient in ingredient list
-                        recipe_prompt = create_recipe_prompt(self, get_ingredient_list(), instructions, is_strict_ingredients)
+                        recipe_prompt_message = create_recipe_prompt(self, get_ingredient_list(), instructions, is_strict_ingredients)
 
                         # Save the request to the database
-                        save_request_to_db(recipe_prompt)
+                        save_request_to_db(recipe_prompt_message)
 
                         # Send the request to the server
-                        response = create_recipe_from_ai(self,recipe_prompt)
+                        response = create_recipe_from_ai(self,recipe_prompt_message)
                         
                         # Create an image prompt using the recipe
                         image_prompt = create_image_prompt(response)
@@ -329,6 +335,8 @@ def create_recipe_prompt(self, ingredient_list, instructions, is_strict_ingredie
         print("Invalid JSON format")
         return ""
 
+
+
     # for item in ingredient_list:
     #     item = json.loads(item)
     #     ingredients_prompt += f'\n"name":"{item["name"]}",\n"quantity":"{item["quantity"]}",\n"unit_of_measure":"{item["unit_of_measure"]}",\n'
@@ -337,9 +345,6 @@ def create_recipe_prompt(self, ingredient_list, instructions, is_strict_ingredie
     # Add the start and end prompt
 
     prompt = prompt.replace(f"[ingredients_prompt]", f"[{ingredients_prompt}]")
-    print("prompt : ", prompt)
-    prompt = f"\n<|im_start|>\n{prompt}\n<|im_end|>"
-    print(prompt)
 
     if check_if_prompt_is_too_long(self, prompt):
         # find how to truncate the prompt - next version
@@ -347,7 +352,38 @@ def create_recipe_prompt(self, ingredient_list, instructions, is_strict_ingredie
 
     print(prompt)
 
-    return prompt
+    # Define regular expressions to match the tags and their corresponding messages
+    # system_pattern = re.compile(r'\[system\]\s*(.+?)\s*(?=\[|$)')
+    # user_pattern = re.compile(r'\[user\]\s*(.+?)\s*(?=\[|$)')
+    # assistant_pattern = re.compile(r'\[assistant\]\s*(.+?)\s*(?=\[|$)')
+    # system_pattern = re.compile(r'\[system\](.*?)\[')
+    # user_pattern = re.compile(r'\[user\](.*?)\[')
+    # assistant_pattern = re.compile(r'\[assistant\](.*?)\[')
+    
+    system_pattern = re.compile(r'\[system\]\s*(.+?)\s*(?=\[|$)')
+    user_pattern = re.compile(r'\[user\]\s*(.+?)\s*(?=\[|$)')
+    assistant_pattern = re.compile(r'\[assistant\]\s*(.+?)\s*(?=\[|$)')
+
+    # Find all matches for the patterns in the string
+    system_matches = system_pattern.findall(prompt)
+    user_matches = user_pattern.findall(prompt)
+    assistant_matches = assistant_pattern.findall(prompt)
+
+    # Create a list of message dictionaries with the role and content for each message
+    messages = []
+    for message in system_matches:
+        messages.append({'role': 'system', 'content': message})
+    for message in user_matches:
+        messages.append({'role': 'user', 'content': message})
+    for message in assistant_matches:
+        messages.append({'role': 'assistant', 'content': message})
+
+    # Create a JSON object with the messages list
+    json_string = json.dumps(messages, indent=2)
+
+    print(json_string)
+
+    return messages
 
 def prompt_loading():
     """
@@ -379,8 +415,8 @@ def check_if_prompt_is_too_long(self, prompt):
     """
     #Encodes a string into tokens.
     tokens = enc.encode(prompt)
-    if len(tokens) > self.max_token_length - \
-                self.max_completion_length:
+    if len(tokens) > self.chat_completion_max_token_length - \
+                self.chat_completion_max_completion_length:
             print('Prompt too long. truncated.')
             # truncate the prompt by removing the oldest two messages
             self.messages = self.messages[2:]
@@ -433,23 +469,22 @@ def create_recipe_from_ai(self, request):
     """
 
     # Generate a recipe using the AI
-    response = openai.Completion.create(
-            model = self.model,
-            prompt=request,
-            temperature=self.temperature,
-            max_tokens=self.max_completion_length,
-            top_p=self.top_p,
-            frequency_penalty=self.frequency_penalty,
-            presence_penalty=self.presence_penalty,
-            n=self.n,
-            stream=self.stream,
-            best_of = self.best_of,
-            logprobs=self.logprobs,
-            echo=self.echo,
-            stop=["<|im_end|>"])
+    response = openai.ChatCompletion.create(
+            model = self.chat_completion_model,
+            messages=[request],
+            temperature=self.chat_completion_temperature,
+            max_tokens=self.chat_completion_max_completion_length,
+            top_p=self.chat_completion_top_p,
+            frequency_penalty=self.chat_completion_frequency_penalty,
+            presence_penalty=self.chat_completion_presence_penalty,
+            n=self.chat_completion_n,
+            stream=self.chat_completion_stream,
+            best_of = self.chat_completion_best_of,
+            logprobs=self.chat_completion_logprobs,
+            echo=self.chat_completion_echo)
     return response
 
-def generate_recipe_image(request):
+def generate_recipe_image(self,response):
     """
     Generate a recipe image using the AI.
 
@@ -459,9 +494,14 @@ def generate_recipe_image(request):
     Returns:
         dict: The response from the AI.
     """
-
-    # TODO: Implement this function to send the request and image prompt to the server
-    pass
+    image_url = ""
+    # response = openai.Image.create(
+    #     prompt=response,
+    #     n=self.image_generation_n,
+    #     size=self.image_generation_size
+    # )
+    # image_url = response['data'][0]['url']
+    return image_url
 
 def get_response():
     """

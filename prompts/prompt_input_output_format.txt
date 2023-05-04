@@ -1,3 +1,4 @@
+[user]
 I will give you some examples of the input and the output you will generate. 
 ---------------------------
 Example 1:
@@ -258,3 +259,6 @@ The texts above are part of the overall instruction.
 ---------------------------
 
  Do not start working yet.
+
+[assistant]
+Understood. Waiting for next input.

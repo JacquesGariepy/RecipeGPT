@@ -1,3 +1,4 @@
+[user]
 It will provide the information needed for the recipe, the information will be provided in JSON format. If there is no mention, the value null will be provided, which will allow you to be imaginative, otherwise take into consideration the mention provided.
 
 1- Identification of the dish: The chef must know what type of dish he wants to create (starter, main course, dessert, etc.) and what style of cuisine he wishes to use (French, Italian, Asian, etc.). The identification will be provided in JSON format, either under the name "identification".
@@ -23,3 +24,6 @@ The output must be in JSON format. The answer must include the name of the recip
 ---------------------------
 
  Do not start working yet.
+
+[assistant]
+Understood. Waiting for next input.
