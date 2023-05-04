@@ -100,57 +100,61 @@ class recipe_manager_ai:
                 if response in valid_responses:
                     action = valid_responses[response]
                     if action == 'add_item':
-                        item = input("Enter the name, quantity, and unit of measurement for the item (e.g. apples-2-pounds): ")
+                        # Ask the user to enter the name, quantity, and unit of measurement for the item
+                        new_ingredient = input("Enter the name, quantity, and unit of measurement for the item (e.g. apples-2-pounds): ")
+                        
+                        # Validate the format of the input string
+                        if verify_format(new_ingredient):
+                            # Create a JSON item from the input string
+                            json_ingredient = create_ingredient_json(new_ingredient)
+                            # Check if the item is already in the list
+                            if not has_ingredient(json_ingredient):
+                                # Save the JSON item in local memory
+                                save_ingredient_to_local_memory(json_ingredient)
+                            else:
+                                raise Exception("Item already in list")
+                        else:
+                            raise Exception("Invalid item format")        
+                        continue
                     elif action == 'remove_item':
                         item_name = input("Enter the name of the item you want to remove: ")
                         delete_ingredient_to_local_memory(item_name)
+                        continue
                     elif action == 'remove_all':
                         delete_ingredients_to_local_memory()
+                        continue
                     elif action == 'submit_recipe':
                         instructions = input("Please provide the necessary instruction for the recipe, such as the type of dish, the region, allergies, cooking time, number of servings, and any ingredients to avoid. For example: type of dessert, Italian cuisine, gluten-free, nut allergy, no cinnamon, 6 servings, preparation time of no more than 60 minutes, microwave cooking. Leave blank if there are no instructions.")
-                else:
-                    raise Exception("Invalid response. Please leave it blank or '1', '2', '3', or '4'.") 
-
-                is_strict_ingredients = 'yes'
-                while is_strict_ingredients not in ['yes', 'no']:
-                    is_strict_ingredients = input("Should the ingredients be strict? Please enter 'yes' or 'no': ").lower()
-                    if not is_strict_ingredients == 'yes' or not is_strict_ingredients == 'no':
-                        raise Exception("Invalid input. Please enter 'yes' or 'no'.")
                 
-                # Create a recipe prompt using the input from the request question and the ingridient in ingredient list
-                recipe_prompt = create_recipe_prompt(self, get_ingredient_list(), instructions, is_strict_ingredients)
+                        is_strict_ingredients = 'yes'
+                        while is_strict_ingredients not in ['yes', 'no']:
+                            is_strict_ingredients = input("Should the ingredients be strict? Please enter 'yes' or 'no': ").lower()
+                            if not is_strict_ingredients == 'yes' or not is_strict_ingredients == 'no':
+                                raise Exception("Invalid input. Please enter 'yes' or 'no'.")
+                        
+                        # Create a recipe prompt using the input from the request question and the ingridient in ingredient list
+                        recipe_prompt = create_recipe_prompt(self, get_ingredient_list(), instructions, is_strict_ingredients)
 
-                # Save the request to the database
-                save_request_to_db(recipe_prompt)
+                        # Save the request to the database
+                        save_request_to_db(recipe_prompt)
 
-                # Send the request to the server
-                response = create_recipe_from_ai(recipe_prompt)
-                
-                # Create an image prompt using the recipe
-                image_prompt = create_image_prompt(response)
+                        # Send the request to the server
+                        response = create_recipe_from_ai(recipe_prompt)
+                        
+                        # Create an image prompt using the recipe
+                        image_prompt = create_image_prompt(response)
 
-                # Check if the JSON response is valid
-                if is_json_valid(response):
-                    # Save the response to the database
-                    save_response_to_db(response)
+                        # Check if the JSON response is valid
+                        if is_json_valid(response):
+                            # Save the response to the database
+                            save_response_to_db(response)
 
-                    # Send the response to the user
-                    send_response_to_user(response)
-                else:
-                    raise Exception("Invalid JSON response from server")
-                
-                # Verify if the format of the item is valid
-                if verify_format(item):
-                    # Create a JSON item from the input string
-                    json_ingredient = create_ingredient_json(item)
-                    # Check if the item is already in the list
-                    if not has_ingredient(json_ingredient):
-                        # Save the JSON item to local memory
-                        save_ingredient_to_local_memory(json_ingredient)
+                            # Send the response to the user
+                            send_response_to_user(response)
+                        else:
+                            raise Exception("Invalid JSON response from server")
                     else:
-                        print("Item already in list")
-                else:
-                    raise Exception("Invalid item format")        
+                        raise Exception("Invalid response. Please leave it blank or '1', '2', '3', or '4'.") 
             except Exception as e:
                 print(f"Error: {e}")
                 continue
@@ -519,7 +523,6 @@ def get_ingredient_list():
         # If the file doesn't exist yet, return an empty list
         ingredient_list = []
     return ingredient_list
-
 
 # Create an instance of RecipeManager
 recipe_manager_ai = recipe_manager_ai(credentials)
