@@ -1,6 +1,7 @@
 
 import json
 import os
+import re
 import openai
 import tiktoken
 
@@ -139,7 +140,7 @@ class recipe_manager_ai:
                         save_request_to_db(recipe_prompt)
 
                         # Send the request to the server
-                        response = create_recipe_from_ai(recipe_prompt)
+                        response = create_recipe_from_ai(self,recipe_prompt)
                         
                         # Create an image prompt using the recipe
                         image_prompt = create_image_prompt(response)
@@ -291,7 +292,7 @@ def delete_ingredient_to_local_memory(item_name):
     with open("items.json", "w") as f:
         json.dump(ingredient_list, f)
 
-def create_recipe_prompt(self, ingredient_list, instruction, is_strict_ingredients):
+def create_recipe_prompt(self, ingredient_list, instructions, is_strict_ingredients):
     """
     Create a recipe prompt using the input from the request question and the ingridient in ingredient list.
 
@@ -303,23 +304,38 @@ def create_recipe_prompt(self, ingredient_list, instruction, is_strict_ingredien
     Returns:
         str: The recipe prompt.
     """
-
-    prompt = ""
     
     # load the prompt files in the specified order
-    prompt_loading(prompt)
-
+    prompt = prompt_loading()
     # add instruction and is_strict_ingredients to the prompt
-    ingredients_prompt = f'{{\n"instruction": "{instruction}"\n}}'
-    ingredients_prompt += f'{{\n"is_strict_ingredients": "{is_strict_ingredients}"\n}}'
-    
+    ingredients_prompt = f'{{"instruction":"{instructions}",'
+    ingredients_prompt += f'"is_strict_ingredients":"{is_strict_ingredients}",'
+    temp_ingredients = ""
+    i = 0
     for item in ingredient_list:
         item = json.loads(item)
-        ingredients_prompt += f'{{\n  "name": "{item["name"]}",\n  "quantity": "{item["quantity"]}",\n  "unit_of_measure": "{item["unit_of_measure"]}"\n}}'
-    
+        if i != 0:
+            temp_ingredients += ","
+        temp_ingredients += f'{{"name":"{item["name"]}","quantity":"{item["quantity"]}","unit_of_measure":"{item["unit_of_measure"]}"}}'
+        i+=1
+    ingredients_prompt += f'"ingredients":[{temp_ingredients}]}}'
+
+    if not is_json_valid(ingredients_prompt):
+        print(ingredients_prompt)
+        print("Invalid JSON format")
+        return ""
+
+    # for item in ingredient_list:
+    #     item = json.loads(item)
+    #     ingredients_prompt += f'\n"name":"{item["name"]}",\n"quantity":"{item["quantity"]}",\n"unit_of_measure":"{item["unit_of_measure"]}",\n'
+    print(ingredients_prompt)
     # Replace the placeholder in the prompt with the ingredients
     # Add the start and end prompt
-    prompt = f"\n<|im_start|>{prompt.replace('[INSTRUCTION]', ingredients_prompt)}\n<|im_end|>"
+
+    prompt = prompt.replace(f"[ingredients_prompt]", f"[{ingredients_prompt}]")
+    print("prompt : ", prompt)
+    prompt = f"\n<|im_start|>\n{prompt}\n<|im_end|>"
+    print(prompt)
 
     if check_if_prompt_is_too_long(self, prompt):
         # find how to truncate the prompt - next version
@@ -329,7 +345,7 @@ def create_recipe_prompt(self, ingredient_list, instruction, is_strict_ingredien
 
     return prompt
 
-def prompt_loading(prompt):
+def prompt_loading():
     """
     Load the prompt files in the specified order.
 
@@ -339,11 +355,13 @@ def prompt_loading(prompt):
     Returns:
         None
     """
-
+    prompt = ""
     for prompt_name in prompt_load_order:
         fp_prompt = os.path.join(dir_prompt, prompt_name + '.txt')
         with open(fp_prompt) as f:
             prompt += f"{f.read()}"
+            prompt += "\n\n"
+    return prompt
 
 def check_if_prompt_is_too_long(self, prompt):
     """
@@ -380,7 +398,7 @@ def create_image_prompt(recipe_prompt):
     image_prompt = f"Please take a picture of the following recipe:\n\n{recipe_prompt}"
     return image_prompt
 
-def save_request_to_db(request_question, recipe_prompt):
+def save_request_to_db(recipe_prompt):
     """
     Create a JSON object for the request and save it to the database.
     
@@ -394,7 +412,7 @@ def save_request_to_db(request_question, recipe_prompt):
 
     # Create a JSON object for the request and save it to the database
     ingredient_list = get_ingredient_list()
-    request = {"question": request_question, "ingredient_list" : ingredient_list,  "recipe_prompt": recipe_prompt}
+    request = {"recipe_prompt": recipe_prompt}
     with open("requests.json", "a") as f:
         f.write(json.dumps(request) + "\n")
     return request
