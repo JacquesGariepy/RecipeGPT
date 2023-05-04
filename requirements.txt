@@ -1,0 +1,6 @@
+pip installpip
+pip installopenai
+pip installnumpy
+pip install nomic
+pip install pyllamacpp
+pip install tiktoken

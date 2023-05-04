@@ -1,0 +1,7 @@
+Create the recipe from these instructions and the ingredients provided. 
+
+Input:
+[INSTRUCTION]
+
+Show me the recipe output in JSON. No text or description, just the JSON.
+<Start working>
