@@ -12,6 +12,9 @@ enc = tiktoken.get_encoding("cl100k_base")
 with open('secrets.json') as f:
     credentials = json.load(f)
 
+# Load credentials from configs.json file
+with open('configs.json') as f:
+    configs = json.load(f)
 # Define the directory where prompts will be stored
 dir_prompt = './prompts'
 
@@ -21,11 +24,12 @@ prompt_load_order = ['prompt_role',
                      'prompt_input_output_format',
                      'prompt_query']
 
+
 # Define the recipe_manager class
 class recipe_manager_ai:
-    def __init__(self, credentials):
+    def __init__(self, credentials, configs):
         # Set OpenAI API key
-        openai.api_key = credentials["RecipeManager"]["OPENAI_KEY"]
+        openai.api_key = credentials["RecipeManagerAI"]["OPENAI_KEY"]
         
         # Initialize list of ingredients
         self.ingredient_list = []
@@ -37,43 +41,43 @@ class recipe_manager_ai:
         self.messages = []
         
         # Set maximum token length
-        self.max_token_length = 8000
+        self.max_token_length = configs["RecipeManagerAI"]["max_token_length"]
         
         # Set maximum completion length
-        self.max_completion_length = 2000
+        self.max_completion_length = configs["RecipeManagerAI"]["max_completion_length"]
         
         # Set temperature for text generation
-        self.temperature = 0.8
+        self.temperature = configs["RecipeManagerAI"]["temperature"]
         
         # Set number of completions to generate
-        self.n=1
+        self.n=configs["RecipeManagerAI"]["n"]
         
         # Set top p value for text generation
-        self.top_p = 1
+        self.top_p = configs["RecipeManagerAI"]["top_p"]
         
         # Set frequency penalty for text generation
-        self.frequency_penalty = 0
+        self.frequency_penalty = configs["RecipeManagerAI"]["frequency_penalty"]
         
         # Set presence penalty for text generation
-        self.presence_penalty = 0
+        self.presence_penalty = configs["RecipeManagerAI"]["presence_penalty"]
         
         # Set stop token for text generation
-        self.stop = ""
+        self.stop = configs["RecipeManagerAI"]["stop"]
         
         # Set streaming mode to False
-        self.stream = False
+        self.stream = configs["RecipeManagerAI"]["stream"]
         
         # Set number of best completions to return
-        self.best_of = 1
+        self.best_of = configs["RecipeManagerAI"]["best_of"]
         
         # Set logprobs to 0
-        self.logprobs = 0
+        self.logprobs = configs["RecipeManagerAI"]["logprobs"]
         
         # Set echo mode to False
-        self.echo = False
+        self.echo = configs["RecipeManagerAI"]["echo"]
         
         # Set model to use for text generation
-        self.model = "text-ada-001" #"text-davinci-003"
+        self.model = configs["RecipeManagerAI"]["model"]
 
     def run(self):
         """
@@ -543,7 +547,7 @@ def get_ingredient_list():
     return ingredient_list
 
 # Create an instance of RecipeManager
-recipe_manager_ai = recipe_manager_ai(credentials)
+recipe_manager_ai = recipe_manager_ai(credentials, configs)
 
 # Run the application
 recipe_manager_ai.run()
