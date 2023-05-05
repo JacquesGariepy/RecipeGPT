@@ -24,3 +24,5 @@ To use your API key in your Python code, you can create a file called .env in yo
     OPENAI_API_KEY=your_api_key_here
 
 
+utilisation de la librairie, nltk (Natural Language Toolkit)
+ https://www.nltk.org/

@@ -1,8 +1,7 @@
 [user]
 Create the recipe from these instructions and the ingredients provided. 
-
 Input:
 [ingredients_prompt]
 
-Show me the recipe output in JSON. No text or description, just the JSON.
+Show me the recipe output in JSON. No text or description, just the JSON. The value of choices.message.content of OpenAIObject must be valid JSON and the JSON will be interpreted, so make sure it is valid.
 <Start working>

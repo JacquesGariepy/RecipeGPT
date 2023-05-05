@@ -4,3 +4,4 @@ pip installnumpy
 pip install nomic
 pip install pyllamacpp
 pip install tiktoken
+pip install tqdm

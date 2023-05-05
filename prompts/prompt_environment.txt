@@ -1,12 +1,10 @@
 [user]
 It will provide the information needed for the recipe, the information will be provided in JSON format. If there is no mention, the value null will be provided, which will allow you to be imaginative, otherwise take into consideration the mention provided.
-
 1- Identification of the dish: The chef must know what type of dish he wants to create (starter, main course, dessert, etc.) and what style of cuisine he wishes to use (French, Italian, Asian, etc.). The identification will be provided in JSON format, either under the name "identification".
 Example :
 """
 "identification": "style of dessert meal. Italian cuisine. gluten-free, must not have cinnamon. 6 servings. duration around 60 minutes. cooking in the oven.", ...
 """
-
 2- Strict Ingredients: It will be stipulated if the recipe must only include the ingredients mentioned using the bracket "IngredientsStrict": "true", the value "true" will indicate if the recipe must only include the ingredients provided and "false" if you have the freedom to add ingredients.
 Example :
 """
@@ -21,9 +19,7 @@ Example :
 
 The output must be in JSON format. The answer must include the name of the recipe, the date and time in UTC, the preparation time in minutes, the cooking time (if applicable, otherwise indicate none) in minutes, the total minutes of the recipe , the number of servings, the list of ingredients needed for the recipe, the preparation steps, note, the ingredient provided as input provide the list of ingredients with their remaining value, category, keywords.
 
----------------------------
-
- Do not start working yet.
+Do not start working yet.
 
 [assistant]
 Understood. Waiting for next input.

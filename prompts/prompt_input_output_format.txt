@@ -1,12 +1,11 @@
 [user]
 I will give you some examples of the input and the output you will generate. 
----------------------------
 Example 1:
 """
 - Input:
 {
   "identification": [
-    "style of dessert meal. Italian cuisine. gluten-free. must not have cinnamon. 6 servings. duration around 60 minutes. cooking in the oven."
+    "style of dessert meal. Italian cuisine. gluten-free."
   ],
   "StrictIngredients": "true",
   "ingredients": [
@@ -56,47 +55,14 @@ Example 1:
       "name": "almond flour",
       "quantity": "200",
       "unit_of_measure": "g"
-    },
-    {
-      "name": "sugar",
-      "quantity": "150",
-      "unit_of_measure": "g"
-    },
-    {
-      "name": "eggs",
-      "quantity": "3",
-      "unit_of_measure": null
-    },
-    {
-      "name": "baking powder",
-      "quantity": "1",
-      "unit_of_measure": "tsp"
-    },
-    {
-      "name": "vanilla extract",
-      "quantity": "1",
-      "unit_of_measure": "tsp"
-    },
-    {
-      "name": "salt",
-      "quantity": "1",
-      "unit_of_measure": "pinch"
     }
   ],
   "prepSteps": [
     "Preheat the oven to 350°F (180°C).",
     "Grease a 9-inch (23-cm) cake pan with butter or cooking spray.",
-    "Peel and core the apple, then slice into thin wedges.",
-    "In a large bowl, whisk together the almond flour, sugar, baking powder, and salt.",
-    "In a separate bowl, beat the eggs until frothy.",
-    "Add the milk and vanilla extract to the eggs and stir until combined.",
-    "Pour the wet ingredients into the dry ingredients and mix until well combined.",
-    "Pour the batter into the prepared cake pan.",
-    "Arrange the apple slices on top of the batter in a circular pattern.",
-    "Bake the cake for 45 minutes, or until a toothpick inserted into the center comes out clean.",
-    "Remove the cake from the oven and let it cool for 10-15 minutes before slicing and serving."
+    "In a separate bowl, beat the eggs until frothy."
   ],
-  "notes": "This cake is gluten-free and cinnamon-free, but you can add a pinch of nutmeg or cardamom for extra flavor if you like.",
+  "notes": "This cake is gluten-free and cinnamon-free.",
   "remaining_Ingredients": [
     {
       "name": "apple",
@@ -107,16 +73,6 @@ Example 1:
       "name": "milk",
       "quantity": "250",
       "unit_of_measure": "ml"
-    },
-    {
-      "name": "almond flour",
-      "quantity": "0",
-      "unit_of_measure": "g"
-    },
-    {
-      "name": "sugar",
-      "quantity": "0",
-      "unit_of_measure": "g"
     }
   ],
   "category": "Dessert",
@@ -124,7 +80,6 @@ Example 1:
 }
 
 """
----------------------------
 Exemple 2
 """
 Input:
@@ -185,51 +140,15 @@ Output:
         "name": "red onion",
         "quantity": "1/4",
         "unit_of_measure": null
-    },
-    {
-        "name": "feta cheese",
-        "quantity": "4",
-        "unit_of_measure": "oz"
-    },
-    {
-        "name": "olive oil",
-        "quantity": "2",
-        "unit_of_measure": "tbsp"
-    },
-    {
-        "name": "lemon juice",
-        "quantity": "2",
-        "unit_of_measure": "tbsp"
-    },
-    {
-        "name": "garlic",
-        "quantity": "1",
-        "unit_of_measure": "clove"
-    },
-    {
-        "name": "salt",
-        "quantity": "to taste",
-        "unit_of_measure": null
-    },
-    {
-        "name": "black pepper",
-        "quantity": "to taste",
-        "unit_of_measure": null
     }
     ],
     "prepSteps": [
     "Drain and rinse the chickpeas.",
     "Peel and dice the cucumber into small pieces.",
     "Cut the cherry tomatoes in half.",
-    "Peel and finely chop the red onion.",
-    "Crumble the feta cheese into small pieces.",
-    "In a large bowl, combine the chickpeas, cucumber, cherry tomatoes, red onion, and feta cheese.",
-    "In a small bowl, whisk together the olive oil, lemon juice, minced garlic, salt, and black pepper.",
-    "Pour the dressing over the salad and toss to combine.",
-    "Taste and adjust seasoning as needed.",
-    "Serve immediately or refrigerate until ready to serve."
+    "Peel and finely chop the red onion."
     ],
-    "notes": "This salad is best served chilled and can be made ahead of time. You can also add other Mediterranean ingredients like kalamata olives or roasted red peppers if you like.",
+    "notes": "This salad is best served chilled and can be made ahead of time.",
     "remaining_Ingredients": [
         {
             "name": "canned chickpeas",
@@ -256,9 +175,7 @@ Output:
 """
 The texts above are part of the overall instruction.
 
----------------------------
-
- Do not start working yet.
+Do not start working yet.
 
 [assistant]
 Understood. Waiting for next input.
