@@ -2,7 +2,7 @@ import json
 import os
 import re
 import logging
-import urllib
+from urllib.request import urlretrieve
 from datetime import datetime
 from pathlib import Path
 from typing import List, Optional, Union
@@ -35,6 +35,8 @@ prompt_load_order = ['prompt_role',
                      'prompt_input_output_format',
                      'prompt_query']
 
+prompt_image_load_order = ['prompt_image']
+
 AVAILABLE_MODELS = [
     "gpt-4",
     "gpt-4-0314",
@@ -49,9 +51,9 @@ AVAILABLE_MODELS = [
 # Define the recipe_manager class
 class recipe_manager_ai:
     def __init__(self, credentials, configs):
+        
         self.logger = logging.getLogger(__name__)
         self.logger.info("Initializing recipe_manager_ai class.")
-
         # Set OpenAI API key
         openai.api_key = credentials["recipe_manager_ai"]["openai_api_key"]
         
@@ -66,10 +68,11 @@ class recipe_manager_ai:
         
         self.verbose = False
         self.out_dir = "c:/temp/"
+        self.image_generation_output_path = "c:/temp/"
         self.save_prompt: bool = False,
         self.markdown: bool = False,
         self.verbose: bool = False,
-        self.isFakeAI: bool = True
+        self.isFakeAI: bool = False
         # get chat completion parameters in configs.json file
         chat_completion = configs['configs']['recipe_manager_ai']['chat_completion']
         # Set maximum token length
@@ -113,8 +116,8 @@ class recipe_manager_ai:
 
         image_generation = configs['configs']['recipe_manager_ai']['image_generation']
         self.image_generation_n = image_generation["n"]
-        self.image_generation_size = image_generation["size"]  
-    
+        self.image_generation_size = image_generation["size"] 
+
     def main(self):
         #"""
         #   Main function for the recipe_manager_ai class
@@ -202,14 +205,14 @@ class recipe_manager_ai:
                         save_request_to_db(self, recipe_prompt_message)
 
                         self.logger.info("Create recipe from AI. please wait...")
-                        #response = '{"choices": [{"finish_reason": "stop", "index": 0, "message": {"content": "{\n    "recipe_name": "Italian Banana Cake",\n    "dateTime_utc": "2021-09-14T18:00:00Z",\n    "preparation_time": 20,\n    "cooking_time": 40,\n    "total_cooking_time": 60,\n    "servings": 6,\n    "ingredients": [\n        {\n            "name": "farine de bl\u00e9 entier",\n            "quantity": "225",\n            "unit_of_measure": "tasse"\n        },\n {"name": "poudre \u00e0 p\u00e2te","quantity": "5","unit_of_measure": "ml"},{"name": "cannelle moulue","quantity": "5","unit_of_measure": "ml"},{"name": "sel","quantity": "1","unit_of_measure": "ml"},{"name": "piment de la Jama\u00efque moulu","quantity": "2.5","unit_of_measure": "ml"},{"name": "bananes","quantity": "3","unit_of_measure": ""},{"name": "cassonade","quantity": "105","unit_of_measure": "g"}],\n    "prepSteps": ["Preheat the oven to 350\u00b0F (180\u00b0C).","Grease a 9-inch (23-cm) cake pan with butter or cooking spray.","In a separate bowl, whisk together the flour, baking powder, cinnamon, salt, and allspice.","In a large mixing bowl, mash the bananas until smooth.","Add the brown sugar to the mashed bananas and stir until well combined.","Fold the dry ingredients into the banana mixture until just combined.","Pour the batter into the prepared cake pan and spread it out evenly.","Bake the cake for 35 to 40 minutes, or until a toothpick inserted into the center comes out clean.","Allow the cake to cool for 10 minutes in the pan before transferring it to a wire rack to cool completely."],\n    "notes": "This cake is nut-free and can be served with whipped cream or vanilla ice cream.",\n    "remaining_Ingredients": [{"name": "farine de bl\u00e9 entier","quantity": "0","unit_of_measure": "tasse"},{"name": "poudre \u00e0 p\u00e2te","quantity": "0","unit_of_measure": "ml"},{"name": "cannelle moulue","quantity": "0","unit_of_measure": "ml"},{"name": "sel","quantity": "0","unit_of_measure": "ml"},{"name": "piment de la Jama\u00efque moulu","quantity": "0","unit_of_measure": "ml"},{"name": "bananes","quantity": "0","unit_of_measure": ""},{"name": "cassonade","quantity": "0","unit_of_measure": "g"}],\n    "category": "Dessert",\n    "keywords": ["Italian","banana","nut-free","cake","dessert"]}\n", "role": "assistant"}}], "created": 1683250762, "id": "chatcmpl-7Cehmn3YV4yut4wHShoOGraWRcoQZ", "model": "gpt-3.5-turbo-0301", "object": "chat.completion", "usage": {"completion_tokens": 759, "prompt_tokens": 1760, "total_tokens": 2519}}'
-                        
-                        self.logger.info("Creating recipe from AI completed. Wait, this process will take a time.")      
+                        # Create a recipe from the AI
                         response = create_recipe_from_ai(self, self.isFakeAI, recipe_prompt_message)
 
                         self.logger.info("Recipe from AI completed.")
-
+                        image_url = ""
+                        # loop through the response choices
                         for choice in response["choices"]:
+                            self.logger.info("Response choice: %s", choice)
                             # get the content of the response choice message
                             contents = choice.message["content"].strip() 
                             
@@ -224,6 +227,7 @@ class recipe_manager_ai:
                             ts = get_timestamp(self)
                             save_generated_texts_to_file(self, response, ts)
                             try:
+                                self.logger.info("Loading json prompt recipe content.")
                                 #try to load json content IA response
                                 json_data = json.loads(contents)
                                 self.logger.info("json data: %s", json_data)
@@ -233,15 +237,20 @@ class recipe_manager_ai:
                                 
                                 # Create an image prompt using the recipe
                                 image_prompt = create_image_prompt(self, json_data)
-                                generate_recipe_image(self, image_prompt, ts)
+
+                                # Generate the recipe image
+                                filename, image_url, recipe_image_response = generate_recipe_image(self, image_prompt, ts)
+
+                                self.logger.info("Image URL: %s", filename)
+                                
                             except Exception as e:
                                 self.logger.info("Error: %s", e)
                                 continue
-
+                        
                         self.logger.info("Send the response to the user.")
                         # Send the response to the user
                         send_response_to_user(self, response)
-                        
+                        return response, image_url
                     else:
                         raise Exception("Invalid response. Please leave it blank or '1', '2', '3', or '4'.") 
             except Exception as e:
@@ -288,7 +297,6 @@ def has_ingredient(self, ingredient):
             self.logger.info("Item already in list.")
             return True
     return False
-
 
 def verify_format(self, item):
     """
@@ -439,13 +447,8 @@ def create_recipe_prompt(self, ingredient_list, instructions, is_strict_ingredie
         print("Invalid JSON format")
         return ""
 
-    # for item in ingredient_list:
-    #     item = json.loads(item)
-    #     ingredients_prompt += f'\n"name":"{item["name"]}",\n"quantity":"{item["quantity"]}",\n"unit_of_measure":"{item["unit_of_measure"]}",\n'
     print(ingredients_prompt)
     # Replace the placeholder in the prompt with the ingredients
-    # Add the start and end prompt
-
     prompt = prompt.replace(f"[ingredients_prompt]", f"[{ingredients_prompt}]")
 
     if check_if_prompt_is_too_long(self, prompt):
@@ -483,6 +486,7 @@ def prompt_loading(self):
     """
     self.logger.info("Loading the prompt files in the specified order.")
     prompt = ""
+    
     for prompt_name in prompt_load_order:
         self.logger.info(f"Loading prompt file: {prompt_name}")
         fp_prompt = os.path.join(dir_prompt, prompt_name + '.txt')
@@ -491,6 +495,29 @@ def prompt_loading(self):
             prompt += f"{f.read()}"
             prompt += "\n\n"
     return prompt
+
+def prompt_image_loading(self):
+    """
+    Load the prompt files in the specified order.
+
+    Args:
+        self (object): The object.
+
+    Returns:
+        None
+    """
+    self.logger.info("Loading the prompt files in the specified order.")
+    prompt = ""
+    
+    for prompt_name in prompt_image_load_order:
+        self.logger.info(f"Loading prompt image file: {prompt_name}")
+        fp_prompt = os.path.join(dir_prompt, prompt_name + '.txt')
+        with open(fp_prompt) as f:
+            self.logger.info(f"Adding prompt file: {prompt_name}")
+            prompt += f"{f.read()}"
+            prompt += "\n\n"
+    return prompt
+
 
 def check_if_prompt_is_too_long(self, prompt):
     """
@@ -536,7 +563,8 @@ def create_image_prompt(self, recipe_prompt):
     
     self.logger.info(f"Ingredients: {ingredients_list}")
     self.logger.info("Creating an image prompt.")
-    image_prompt = f"Please take a picture of the following JSON recipe. take the recipe_name tag and the list of ingredient in ingredients tag to create this image in high resolution image.:\n\nRecipe Name:\n{recipe_name}\nIngredients:\n{ingredients_list}"
+    image_prompt = prompt_image_loading(self)
+    image_prompt += f"\n\nRecipe Name:\n{recipe_name}\nIngredients:\n{ingredients_list}"
     self.logger.info(f"Image Prompt: {image_prompt}")
     return image_prompt
 
@@ -580,8 +608,8 @@ def create_recipe_from_ai(self, isFakeAI, request):
                 max_tokens=self.chat_completion_max_completion_length)
         self.logger.info("Generating a recipe using the AI.")
     else:
-        response = '{"choices": [{"finish_reason": "stop", "index": 0, "message": {"content": "{"recipe_name": "Italian Banana Cake","dateTime_utc": "2021-09-14T18:00:00Z","preparation_time": 20,"cooking_time": 40,"total_cooking_time": 60,"servings": 6,"ingredients": [{"name": "farine de blé entier","quantity": "225","unit_of_measure": "tasse"}, {"name": "poudre à pâte","quantity": "5","unit_of_measure": "ml"},{"name": "cannelle moulue","quantity": "5","unit_of_measure": "ml"},{"name": "sel","quantity": "1","unit_of_measure": "ml"},{"name": "piment de la Jamaïque moulu","quantity": "2.5","unit_of_measure": "ml"},{"name": "bananes","quantity": "3","unit_of_measure": ""},{"name": "cassonade","quantity": "105","unit_of_measure": "g"}],"prepSteps": ["Preheat the oven to 350°F (180°C).","Grease a 9-inch (23-cm) cake pan with butter or cooking spray.","In a separate bowl, whisk together the flour, baking powder, cinnamon, salt, and allspice.","In a large mixing bowl, mash the bananas until smooth.","Add the brown sugar to the mashed bananas and stir until well combined.","Fold the dry ingredients into the banana mixture until just combined.","Pour the batter into the prepared cake pan and spread it out evenly.","Bake the cake for 35 to 40 minutes, or until a toothpick inserted into the center comes out clean.","Allow the cake to cool for 10 minutes in the pan before transferring it to a wire rack to cool completely."],"notes": "This cake is nut-free and can be served with whipped cream or vanilla ice cream.","remaining_Ingredients": [{"name": "farine de blé entier","quantity": "0","unit_of_measure": "tasse"},{"name": "poudre à pâte","quantity": "0","unit_of_measure": "ml"},{"name": "cannelle moulue","quantity": "0","unit_of_measure": "ml"},{"name": "sel","quantity": "0","unit_of_measure": "ml"},{"name": "piment de la Jamaïque moulu","quantity": "0","unit_of_measure": "ml"},{"name": "bananes","quantity": "0","unit_of_measure": ""},{"name": "cassonade","quantity": "0","unit_of_measure": "g"}],"category": "Dessert","keywords": ["Italian","banana","nut-free","cake","dessert"]}", "role": "assistant"}}], "created": 1683250762, "id": "chatcmpl-7Cehmn3YV4yut4wHShoOGraWRcoQZ", "model": "gpt-3.5-turbo-0301", "object": "chat.completion", "usage": {"completion_tokens": 759, "prompt_tokens": 1760, "total_tokens": 2519}}'
-
+        response = '{"choices": [{"finish_reason": "stop", "index": 0, "message": {"content": "{"recipe_name": "Banana Bread","dateTime_utc": "2021-07-22T12:00:00Z","preparation_time": 20,"cooking_time": 60,"total_cooking_time": 80,"servings": 8,"ingredients": [{"name": "whole wheat flour","quantity": "1 1/2","unit_of_measure": "cup"},{"name": "baking powder","quantity": "1","unit_of_measure": "tsp"},{"name": "ground cinnamon","quantity": "1","unit_of_measure": "tsp"},{"name": "salt","quantity": "1/4","unit_of_measure": "tsp"},{"name": "ground allspice","quantity": "1/2","unit_of_measure": "tsp"},{"name": "bananas","quantity": "3","unit_of_measure": ""},{"name": "brown sugar","quantity": "1/2","unit_of_measure": "cup"}],"prepSteps": ["Preheat the oven to 350°F (175°C).","In a large bowl, combine flour, baking powder, cinnamon, salt, and allspice.","Mash bananas in a separate bowl until smooth.","Stir mashed bananas and brown sugar into the flour mixture until combined.","Pour mixture into a greased 9x5-inch (23x13-cm) loaf pan.","Bake for 60 minutes or until a toothpick inserted in the center of the bread comes out clean."],"notes": "Allow the bread to cool for at least 10 minutes before slicing and serving.","remaining_Ingredients": [{"name": "whole wheat flour","quantity": "0.5","unit_of_measure": "cup"},{"name": "brown sugar","quantity": "0","unit_of_measure": "cup"},{"name": "bananas","quantity": "0","unit_of_measure": ""}],"category": "Dessert","keywords": ["italian","banana","bread"]}", "role": "assistant"}}], "created": 1683269537, "id": "chatcmpl-7CjabXDAYNjaUUgb4I2XQoCzv3Mzj", "model": "gpt-3.5-turbo-0301", "object": "chat.completion", "usage": {"completion_tokens": 551, "prompt_tokens": 1767, "total_tokens": 2318}}'
+        response = json.loads(response)
     return response
 
 def save_generated_texts_to_file(self, prompt, ts, suffix=""):
@@ -632,31 +660,44 @@ def generate_recipe_image(self,image_prompt, ts):
 
     Args:
         self (object): The object.
-        response (dict): The response to be used in the image generation.
+        image_prompt (str): The image prompt of the request.
+        ts (str): The timestamp of the request.
+
     Returns:
-        dict: The response from the AI.
+        str: filename
+        str: image_url
+        str: recipe_image_response
     """
+
     image_url = ""
     try:
         self.logger.info("Generating a recipe image using the AI.")
-
-        response = openai.Image.create(
-            prompt=image_prompt,
-            n=self.image_generation_n,
-            size=self.image_generation_size
-        )
-        image_url = response['data'][0]['url']
+        request_url = ""
+        
+        if self.isFakeAI:
+            #is fake AI
+            filename = self.image_generation_output_path + "image.jpg"
+            image_url = 'https://oaidalleapiprodscus.blob.core.windows.net/private/org-9ecno2hg2XOJdmvPbRbXQRLC/user-bfmLFpv0uW6To87XhVgdMXvc/img-t3A6SZF6jpGVVracs9Pzmzth.png?st=2023-05-05T15%3A34%3A12Z&se=2023-05-05T17%3A34%3A12Z&sp=r&sv=2021-08-06&sr=b&rscd=inline&rsct=image/png&skoid=6aaadede-4fb3-4698-a8f6-684d7786b067&sktid=a48cca56-e6da-484e-a814-9c849652bcb3&skt=2023-05-05T04%3A48%3A15Z&ske=2023-05-06T04%3A48%3A15Z&sks=b&skv=2021-08-06&sig=svOuX7yQ5twQ4fSE9ou41xl10ohJ98VfXtCr25XnHmQ%3D'
+            recipe_image = urlretrieve(image_url, filename)
+        else:
+            response = openai.Image.create(
+                prompt=image_prompt,
+                n=self.image_generation_n,
+                size=self.image_generation_size
+            )
+            # Get the image URL
+            image_url = response['data'][0]['url']
         self.logger.info("Image URL: " + image_url)
-        # save the image to file
-        resource = urllib.urlopen(image_url)
-        output = open("file{ts}.jpg","wb")
-        output.write(resource.read())
-        output.close()
+        
+        self.logger.info("Downloading the image...")
+        # Set the filename from the directory output and timestamp
+        filename = f'{self.image_generation_output_path}recipe_{ts}.jpg'
+        # Download the image
+        recipe_image_response = urlretrieve(image_url, filename)
+        return filename, image_url, recipe_image_response
     except Exception as e:
         self.logger.info("Error generating image: " + str(e))
-        image_url = ""
-
-    return image_url
+        return ""
 
 def is_json_valid(self, json_string):
     """
