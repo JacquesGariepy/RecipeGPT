@@ -2,6 +2,7 @@ import json
 import os
 import re
 import logging
+import urllib
 from datetime import datetime
 from pathlib import Path
 from typing import List, Optional, Union
@@ -68,7 +69,7 @@ class recipe_manager_ai:
         self.save_prompt: bool = False,
         self.markdown: bool = False,
         self.verbose: bool = False,
-
+        self.isFakeAI: bool = True
         # get chat completion parameters in configs.json file
         chat_completion = configs['configs']['recipe_manager_ai']['chat_completion']
         # Set maximum token length
@@ -204,7 +205,7 @@ class recipe_manager_ai:
                         #response = '{"choices": [{"finish_reason": "stop", "index": 0, "message": {"content": "{\n    "recipe_name": "Italian Banana Cake",\n    "dateTime_utc": "2021-09-14T18:00:00Z",\n    "preparation_time": 20,\n    "cooking_time": 40,\n    "total_cooking_time": 60,\n    "servings": 6,\n    "ingredients": [\n        {\n            "name": "farine de bl\u00e9 entier",\n            "quantity": "225",\n            "unit_of_measure": "tasse"\n        },\n {"name": "poudre \u00e0 p\u00e2te","quantity": "5","unit_of_measure": "ml"},{"name": "cannelle moulue","quantity": "5","unit_of_measure": "ml"},{"name": "sel","quantity": "1","unit_of_measure": "ml"},{"name": "piment de la Jama\u00efque moulu","quantity": "2.5","unit_of_measure": "ml"},{"name": "bananes","quantity": "3","unit_of_measure": ""},{"name": "cassonade","quantity": "105","unit_of_measure": "g"}],\n    "prepSteps": ["Preheat the oven to 350\u00b0F (180\u00b0C).","Grease a 9-inch (23-cm) cake pan with butter or cooking spray.","In a separate bowl, whisk together the flour, baking powder, cinnamon, salt, and allspice.","In a large mixing bowl, mash the bananas until smooth.","Add the brown sugar to the mashed bananas and stir until well combined.","Fold the dry ingredients into the banana mixture until just combined.","Pour the batter into the prepared cake pan and spread it out evenly.","Bake the cake for 35 to 40 minutes, or until a toothpick inserted into the center comes out clean.","Allow the cake to cool for 10 minutes in the pan before transferring it to a wire rack to cool completely."],\n    "notes": "This cake is nut-free and can be served with whipped cream or vanilla ice cream.",\n    "remaining_Ingredients": [{"name": "farine de bl\u00e9 entier","quantity": "0","unit_of_measure": "tasse"},{"name": "poudre \u00e0 p\u00e2te","quantity": "0","unit_of_measure": "ml"},{"name": "cannelle moulue","quantity": "0","unit_of_measure": "ml"},{"name": "sel","quantity": "0","unit_of_measure": "ml"},{"name": "piment de la Jama\u00efque moulu","quantity": "0","unit_of_measure": "ml"},{"name": "bananes","quantity": "0","unit_of_measure": ""},{"name": "cassonade","quantity": "0","unit_of_measure": "g"}],\n    "category": "Dessert",\n    "keywords": ["Italian","banana","nut-free","cake","dessert"]}\n", "role": "assistant"}}], "created": 1683250762, "id": "chatcmpl-7Cehmn3YV4yut4wHShoOGraWRcoQZ", "model": "gpt-3.5-turbo-0301", "object": "chat.completion", "usage": {"completion_tokens": 759, "prompt_tokens": 1760, "total_tokens": 2519}}'
                         
                         self.logger.info("Creating recipe from AI completed. Wait, this process will take a time.")      
-                        response = create_recipe_from_ai(self, recipe_prompt_message)
+                        response = create_recipe_from_ai(self, self.isFakeAI, recipe_prompt_message)
 
                         self.logger.info("Recipe from AI completed.")
 
@@ -220,18 +221,19 @@ class recipe_manager_ai:
                             # Save the response to the database
                             save_response_to_db(self, response)
                             self.logger.info("Saving AI response to file.")
-                            save_generated_texts_to_file(self, response)
+                            ts = get_timestamp(self)
+                            save_generated_texts_to_file(self, response, ts)
                             try:
                                 #try to load json content IA response
                                 json_data = json.loads(contents)
                                 self.logger.info("json data: %s", json_data)
 
                                 # Save format response to file
-                                save_generated_texts_to_file(self, json_data, "_JSON_")
+                                save_generated_texts_to_file(self, json_data, ts, "_JSON_")
                                 
                                 # Create an image prompt using the recipe
-                                image_prompt = create_image_prompt(self, response)
-
+                                image_prompt = create_image_prompt(self, json_data)
+                                generate_recipe_image(self, image_prompt, ts)
                             except Exception as e:
                                 self.logger.info("Error: %s", e)
                                 continue
@@ -523,9 +525,19 @@ def create_image_prompt(self, recipe_prompt):
         str: The image prompt.
     """ 
 
-    # Create an image prompt
+    # get the recipe name and ingredients from the recipe prompt
+    recipe_name = recipe_prompt['recipe_name']
+    ingredients = recipe_prompt['ingredients']
+
+    self.logger.info(f"Recipe Name: {recipe_name}")
+    ingredients_list = ""
+    for ingredient in ingredients:
+        ingredients_list = f"{ingredient['name']}: {ingredient['quantity']} {ingredient['unit_of_measure']}"
+    
+    self.logger.info(f"Ingredients: {ingredients_list}")
     self.logger.info("Creating an image prompt.")
-    image_prompt = f"Please take a picture of the following recipe:\n\n{recipe_prompt}"
+    image_prompt = f"Please take a picture of the following JSON recipe. take the recipe_name tag and the list of ingredient in ingredients tag to create this image in high resolution image.:\n\nRecipe Name:\n{recipe_name}\nIngredients:\n{ingredients_list}"
+    self.logger.info(f"Image Prompt: {image_prompt}")
     return image_prompt
 
 def save_request_to_db(self, recipe_prompt):
@@ -547,7 +559,7 @@ def save_request_to_db(self, recipe_prompt):
         f.write(json.dumps(request) + "\n")
     return request
 
-def create_recipe_from_ai(self, request):
+def create_recipe_from_ai(self, isFakeAI, request):
     """
     Create a recipe using the AI.
 
@@ -560,45 +572,19 @@ def create_recipe_from_ai(self, request):
     """
 
     # Generate a recipe using the AI
-    response = openai.ChatCompletion.create(
-            model = self.chat_completion_model,
-            messages=request,
-            temperature=self.chat_completion_temperature,
-            max_tokens=self.chat_completion_max_completion_length)
-    self.logger.info("Generating a recipe using the AI.")
-    
-    # print("\n\n------- response ---------\n\n")
-    # print(response)
-    # choice = response.get('choices')[0]
-    # print("\n\n------- choice ---------\n\n")
-    # print(choice)
-    # data = response.to_dict()
-    # print("\n\n------- data ---------\n\n")
-    # print(data)
-    # # Convert the dictionary to JSON
-    # json_data = json.dumps(data)
-    # print("\n\n------- json_data ---------\n\n")
-    # print(json_data)
-    # response2 = json.loads(json_data)
-    # print("\n\n------- response2 ---------\n\n")
-    # print(response2)
-    
-    # response = openai.ChatCompletion.create(
-    #         model = self.chat_completion_model,
-    #         messages=[request],
-    #         temperature=self.chat_completion_temperature,
-    #         max_tokens=self.chat_completion_max_completion_length,
-    #         top_p=self.chat_completion_top_p,
-    #         frequency_penalty=self.chat_completion_frequency_penalty,
-    #         presence_penalty=self.chat_completion_presence_penalty,
-    #         n=self.chat_completion_n,
-    #         stream=self.chat_completion_stream,
-    #         best_of = self.chat_completion_best_of,
-    #         logprobs=self.chat_completion_logprobs,
-    #         echo=self.chat_completion_echo)
+    if not isFakeAI:
+        response = openai.ChatCompletion.create(
+                model = self.chat_completion_model,
+                messages=request,
+                temperature=self.chat_completion_temperature,
+                max_tokens=self.chat_completion_max_completion_length)
+        self.logger.info("Generating a recipe using the AI.")
+    else:
+        response = '{"choices": [{"finish_reason": "stop", "index": 0, "message": {"content": "{"recipe_name": "Italian Banana Cake","dateTime_utc": "2021-09-14T18:00:00Z","preparation_time": 20,"cooking_time": 40,"total_cooking_time": 60,"servings": 6,"ingredients": [{"name": "farine de blé entier","quantity": "225","unit_of_measure": "tasse"}, {"name": "poudre à pâte","quantity": "5","unit_of_measure": "ml"},{"name": "cannelle moulue","quantity": "5","unit_of_measure": "ml"},{"name": "sel","quantity": "1","unit_of_measure": "ml"},{"name": "piment de la Jamaïque moulu","quantity": "2.5","unit_of_measure": "ml"},{"name": "bananes","quantity": "3","unit_of_measure": ""},{"name": "cassonade","quantity": "105","unit_of_measure": "g"}],"prepSteps": ["Preheat the oven to 350°F (180°C).","Grease a 9-inch (23-cm) cake pan with butter or cooking spray.","In a separate bowl, whisk together the flour, baking powder, cinnamon, salt, and allspice.","In a large mixing bowl, mash the bananas until smooth.","Add the brown sugar to the mashed bananas and stir until well combined.","Fold the dry ingredients into the banana mixture until just combined.","Pour the batter into the prepared cake pan and spread it out evenly.","Bake the cake for 35 to 40 minutes, or until a toothpick inserted into the center comes out clean.","Allow the cake to cool for 10 minutes in the pan before transferring it to a wire rack to cool completely."],"notes": "This cake is nut-free and can be served with whipped cream or vanilla ice cream.","remaining_Ingredients": [{"name": "farine de blé entier","quantity": "0","unit_of_measure": "tasse"},{"name": "poudre à pâte","quantity": "0","unit_of_measure": "ml"},{"name": "cannelle moulue","quantity": "0","unit_of_measure": "ml"},{"name": "sel","quantity": "0","unit_of_measure": "ml"},{"name": "piment de la Jamaïque moulu","quantity": "0","unit_of_measure": "ml"},{"name": "bananes","quantity": "0","unit_of_measure": ""},{"name": "cassonade","quantity": "0","unit_of_measure": "g"}],"category": "Dessert","keywords": ["Italian","banana","nut-free","cake","dessert"]}", "role": "assistant"}}], "created": 1683250762, "id": "chatcmpl-7Cehmn3YV4yut4wHShoOGraWRcoQZ", "model": "gpt-3.5-turbo-0301", "object": "chat.completion", "usage": {"completion_tokens": 759, "prompt_tokens": 1760, "total_tokens": 2519}}'
+
     return response
 
-def save_generated_texts_to_file(self, prompt, suffix=""):
+def save_generated_texts_to_file(self, prompt, ts, suffix=""):
     """ 
     Save the generated texts to a file.
 
@@ -617,8 +603,6 @@ def save_generated_texts_to_file(self, prompt, suffix=""):
         self.logger.info(f"Saving output to {out_path}")
         out_path.mkdir(parents=True, exist_ok=True)
 
-        ts = get_timestamp(self)
-        
         if self.verbose or not self.out_dir:
             print(f"Prompt:\n{prompt}\n\n")
             self.logger.info(f"Saving output to {out_path}")
@@ -642,7 +626,7 @@ def get_timestamp(self):
     self.logger.info("Getting the current timestamp. YYYYMMDD_HHMMSS")
     return datetime.now().strftime("%Y%b%d_%H-%M-%S")
 
-def generate_recipe_image(self,response):
+def generate_recipe_image(self,image_prompt, ts):
     """
     Generate a recipe image using the AI.
 
@@ -653,12 +637,25 @@ def generate_recipe_image(self,response):
         dict: The response from the AI.
     """
     image_url = ""
-    # response = openai.Image.create(
-    #     prompt=response,
-    #     n=self.image_generation_n,
-    #     size=self.image_generation_size
-    # )
-    # image_url = response['data'][0]['url']
+    try:
+        self.logger.info("Generating a recipe image using the AI.")
+
+        response = openai.Image.create(
+            prompt=image_prompt,
+            n=self.image_generation_n,
+            size=self.image_generation_size
+        )
+        image_url = response['data'][0]['url']
+        self.logger.info("Image URL: " + image_url)
+        # save the image to file
+        resource = urllib.urlopen(image_url)
+        output = open("file{ts}.jpg","wb")
+        output.write(resource.read())
+        output.close()
+    except Exception as e:
+        self.logger.info("Error generating image: " + str(e))
+        image_url = ""
+
     return image_url
 
 def is_json_valid(self, json_string):
