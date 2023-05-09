@@ -1,3 +1,4 @@
+import asyncio
 import json
 import os
 import re
@@ -6,7 +7,7 @@ import requests
 from urllib.request import urlretrieve
 from datetime import datetime
 from pathlib import Path
-from typing import List, Optional, Union
+from typing import Any, List, Optional, Union
 from tqdm import tqdm
 import openai
 import tiktoken
@@ -129,10 +130,10 @@ class recipe_manager_ai:
         validate_model(self, self.chat_completion_model)
         
         # Ask the user if they want to delete the list of ingredients from memory
-        response = input("Do you want to delete the list of ingredients from memory? Enter 1 if you want to delete, otherwise leave it blank.: ")
+        recipe_response = input("Do you want to delete the list of ingredients from memory? Enter 1 if you want to delete, otherwise leave it blank.: ")
         
         # If the user wants to delete the list of ingredients, call the delete_ingredients_to_local_memory function
-        if response == "1":
+        if recipe_response == "1":
             delete_ingredients_to_local_memory(self)
         while True:
             try:
@@ -140,17 +141,17 @@ class recipe_manager_ai:
                 valid_responses = {'': 'add_item', '1': 'add_item', '2': 'submit_recipe', '3': 'remove_item', '4': 'remove_all'}
 
                 # Ask the user if they want to continue or submit the recipe
-                response = input("Do you want to continue? (1: Yes, 2: Submit Recipe, 3: Remove an item from the list, 4: Remove all items from the list): ")
+                recipe_response = input("Do you want to continue? (1: Yes, 2: Submit Recipe, 3: Remove an item from the list, 4: Remove all items from the list): ")
 
                 # Validate response input
-                if response not in ['', '1', '2', '3', '4']:
+                if recipe_response not in ['', '1', '2', '3', '4']:
                     raise Exception("Invalid input. Please enter '' or '1, 2, 3, 4'.: ")
                 instructions = ""
                 # Process response
-                if response in valid_responses:
-                    self.logger.info("Processing response: %s", response)
+                if recipe_response in valid_responses:
+                    self.logger.info("Processing response: %s", recipe_response)
 
-                    action = valid_responses[response]
+                    action = valid_responses[recipe_response]
                     if action == 'add_item':
                         self.logger.info("Adding item to the list.")
                         # Ask the user to enter the name, quantity, and unit of measurement for the item
@@ -207,12 +208,12 @@ class recipe_manager_ai:
 
                         self.logger.info("Create recipe from AI. please wait...")
                         # Create a recipe from the AI
-                        response = create_recipe_from_ai(self, recipe_prompt_message)
+                        recipe_response = create_recipe_from_ai(self, recipe_prompt_message)
 
                         self.logger.info("Recipe from AI completed.")
                         image_url = ""
                         # loop through the response choices
-                        for choice in response["choices"]:
+                        for choice in recipe_response["choices"]:
                             self.logger.info("Response choice: %s", choice)
                             # get the content of the response choice message
                             contents = choice.message["content"].strip() 
@@ -223,10 +224,10 @@ class recipe_manager_ai:
 
                             self.logger.info("Saving response to database.")
                             # Save the response to the database
-                            save_response_to_db(self, response)
+                            save_response_to_db(self, recipe_response)
                             self.logger.info("Saving AI response to file.")
                             ts = get_timestamp(self)
-                            save_generated_texts_to_file(self, response, ts)
+                            save_generated_texts_to_file(self, recipe_response, ts)
                             try:
                                 self.logger.info("Loading json prompt recipe content.")
                                 #try to load json content IA response
@@ -250,7 +251,7 @@ class recipe_manager_ai:
                         
                         self.logger.info("End of recipe generation.")
                         
-                        return response, image_url
+                        return recipe_response, recipe_image_response
                     else:
                         raise Exception("Invalid response. Please leave it blank or '1', '2', '3', or '4'.") 
             except Exception as e:
@@ -587,40 +588,52 @@ def save_request_to_db(self, recipe_prompt):
         f.write(json.dumps(request) + "\n")
     return request
 
+
+async def dispatch_openai_requests(
+    self,
+    messages_list: list[list[dict[str,Any]]],
+) -> list[str]:
+    """Dispatches requests to OpenAI API asynchronously.
+    
+    Args:
+        messages_list: List of messages to be sent to OpenAI ChatCompletion API.
+        model: OpenAI model to use.
+        temperature: Temperature to use for the model.
+        max_tokens: Maximum number of tokens to generate.
+        top_p: Top p to use for the model.
+    Returns:
+        List of responses from OpenAI API.
+    """
+    completion = openai.Completion()
+    
+    async_responses = [
+        openai.ChatCompletion.acreate(
+             model = self.chat_completion_model,
+                    messages=x,
+                    temperature=self.chat_completion_temperature,
+                    max_tokens=self.chat_completion_max_completion_length,
+                    top_p=self.chat_completion_top_p,
+        )
+        for x in messages_list
+    ]
+    return await asyncio.gather(*async_responses) 
+
 def create_recipe_from_ai(self, request):
      # Generate a recipe using the AI
     if self.isFakeAI:
         self.logger.info("Generate a recipe using the FakeAI.")
         return json.loads('{"choices": [{"finish_reason": "stop", "index": 0, "message": {"content": "{"recipe_name": "Banana Bread","dateTime_utc": "2021-07-22T12:00:00Z","preparation_time": 20,"cooking_time": 60,"total_cooking_time": 80,"servings": 8,"ingredients": [{"name": "whole wheat flour","quantity": "1 1/2","unit_of_measure": "cup"},{"name": "baking powder","quantity": "1","unit_of_measure": "tsp"},{"name": "ground cinnamon","quantity": "1","unit_of_measure": "tsp"},{"name": "salt","quantity": "1/4","unit_of_measure": "tsp"},{"name": "ground allspice","quantity": "1/2","unit_of_measure": "tsp"},{"name": "bananas","quantity": "3","unit_of_measure": ""},{"name": "brown sugar","quantity": "1/2","unit_of_measure": "cup"}],"prepSteps": ["Preheat the oven to 350°F (175°C).","In a large bowl, combine flour, baking powder, cinnamon, salt, and allspice.","Mash bananas in a separate bowl until smooth.","Stir mashed bananas and brown sugar into the flour mixture until combined.","Pour mixture into a greased 9x5-inch (23x13-cm) loaf pan.","Bake for 60 minutes or until a toothpick inserted in the center of the bread comes out clean."],"notes": "Allow the bread to cool for at least 10 minutes before slicing and serving.","remaining_Ingredients": [{"name": "whole wheat flour","quantity": "0.5","unit_of_measure": "cup"},{"name": "brown sugar","quantity": "0","unit_of_measure": "cup"},{"name": "bananas","quantity": "0","unit_of_measure": ""}],"category": "Dessert","keywords": ["italian","banana","bread"]}", "role": "assistant"}}], "created": 1683269537, "id": "chatcmpl-7CjabXDAYNjaUUgb4I2XQoCzv3Mzj", "model": "gpt-3.5-turbo-0301", "object": "chat.completion", "usage": {"completion_tokens": 551, "prompt_tokens": 1767, "total_tokens": 2318}}')
     else:
-        response = None
         # Attente de la réponse de l'API tout en affichant une barre de progression
-        with tqdm(total=100) as pbar:
-            while not response:
-                try:
-                    response = openai.ChatCompletion.create(
-                    model = self.chat_completion_model,
-                    messages=request,
-                    temperature=self.chat_completion_temperature,
-                    max_tokens=self.chat_completion_max_completion_length)
-                except requests.exceptions.RequestException:
-                    pass
-                    pbar.update(10)
-        # Utilisation de la réponse de l'API
-        if response.status_code == 200:
-            self.logger.info("Generating a recipe using the AI.")
-            return response
-            pass
-        else:
-            self.logger.info({"Generating a recipe using the AI error.": response.status_code})
-            return response
-        #response = openai.ChatCompletion.create(
-                #model = self.chat_completion_model,
-                #messages=request,
-                #temperature=self.chat_completion_temperature,
-                #max_tokens=self.chat_completion_max_completion_length)
+        response = openai.ChatCompletion.create(
+            model = self.chat_completion_model,
+            messages=request,
+            temperature=self.chat_completion_temperature,
+            max_tokens=self.chat_completion_max_completion_length,
+            top_p=self.chat_completion_top_p,
+        )
         self.logger.info("Recipe done.")
-    return response
+        return response
 
 def save_generated_texts_to_file(self, prompt, ts, suffix=""):
     """ 
@@ -693,7 +706,7 @@ def create_recipe_image_from_ai(self, image_prompt, ts):
             #is fake AI
             filename = f'{self.image_generation_output_path}recipe_{ts}.png'
             image_url = 'https://oaidalleapiprodscus.blob.core.windows.net/private/org-9ecno2hg2XOJdmvPbRbXQRLC/user-bfmLFpv0uW6To87XhVgdMXvc/img-t3A6SZF6jpGVVracs9Pzmzth.png?st=2023-05-05T15%3A34%3A12Z&se=2023-05-05T17%3A34%3A12Z&sp=r&sv=2021-08-06&sr=b&rscd=inline&rsct=image/png&skoid=6aaadede-4fb3-4698-a8f6-684d7786b067&sktid=a48cca56-e6da-484e-a814-9c849652bcb3&skt=2023-05-05T04%3A48%3A15Z&ske=2023-05-06T04%3A48%3A15Z&sks=b&skv=2021-08-06&sig=svOuX7yQ5twQ4fSE9ou41xl10ohJ98VfXtCr25XnHmQ%3D'
-            recipe_image = urlretrieve(image_url, filename)
+            recipe_image_response = urlretrieve(image_url, filename)
         else:
             self.logger.info("Generating a recipe image using the AI.")
             #add loading
@@ -782,4 +795,4 @@ def get_ingredient_list(self):
 recipe_manager_ai = recipe_manager_ai(credentials, configs)
 
 # Run the application
-recipe_manager_ai.main()
+recipe_response, recipe_image_response = recipe_manager_ai.main()
