@@ -51,7 +51,7 @@ AVAILABLE_MODELS = [
 # Define the recipe_manager class
 class recipe_manager_ai:
     def __init__(self, credentials, configs):
-        
+
         self.logger = logging.getLogger(__name__)
         self.logger.info("Initializing recipe_manager_ai class.")
         # Set OpenAI API key
@@ -247,9 +247,8 @@ class recipe_manager_ai:
                                 self.logger.info("Error: %s", e)
                                 continue
                         
-                        self.logger.info("Send the response to the user.")
-                        # Send the response to the user
-                        send_response_to_user(self, response)
+                        self.logger.info("End of recipe generation.")
+                        
                         return response, image_url
                     else:
                         raise Exception("Invalid response. Please leave it blank or '1', '2', '3', or '4'.") 
@@ -608,7 +607,8 @@ def create_recipe_from_ai(self, isFakeAI, request):
                 max_tokens=self.chat_completion_max_completion_length)
         self.logger.info("Generating a recipe using the AI.")
     else:
-        response = '{"choices": [{"finish_reason": "stop", "index": 0, "message": {"content": "{"recipe_name": "Banana Bread","dateTime_utc": "2021-07-22T12:00:00Z","preparation_time": 20,"cooking_time": 60,"total_cooking_time": 80,"servings": 8,"ingredients": [{"name": "whole wheat flour","quantity": "1 1/2","unit_of_measure": "cup"},{"name": "baking powder","quantity": "1","unit_of_measure": "tsp"},{"name": "ground cinnamon","quantity": "1","unit_of_measure": "tsp"},{"name": "salt","quantity": "1/4","unit_of_measure": "tsp"},{"name": "ground allspice","quantity": "1/2","unit_of_measure": "tsp"},{"name": "bananas","quantity": "3","unit_of_measure": ""},{"name": "brown sugar","quantity": "1/2","unit_of_measure": "cup"}],"prepSteps": ["Preheat the oven to 350°F (175°C).","In a large bowl, combine flour, baking powder, cinnamon, salt, and allspice.","Mash bananas in a separate bowl until smooth.","Stir mashed bananas and brown sugar into the flour mixture until combined.","Pour mixture into a greased 9x5-inch (23x13-cm) loaf pan.","Bake for 60 minutes or until a toothpick inserted in the center of the bread comes out clean."],"notes": "Allow the bread to cool for at least 10 minutes before slicing and serving.","remaining_Ingredients": [{"name": "whole wheat flour","quantity": "0.5","unit_of_measure": "cup"},{"name": "brown sugar","quantity": "0","unit_of_measure": "cup"},{"name": "bananas","quantity": "0","unit_of_measure": ""}],"category": "Dessert","keywords": ["italian","banana","bread"]}", "role": "assistant"}}], "created": 1683269537, "id": "chatcmpl-7CjabXDAYNjaUUgb4I2XQoCzv3Mzj", "model": "gpt-3.5-turbo-0301", "object": "chat.completion", "usage": {"completion_tokens": 551, "prompt_tokens": 1767, "total_tokens": 2318}}'
+        # dont work now - need to fix
+        response = '{"choices":[{"finish_reason":"stop","index":0,"message":{"content":{"recipe_name":"Vietnamese Beef Salad","dateTime_utc":"2021-10-29T23:30:00Z","preparation_time":30,"cooking_time":15,"total_cooking_time":45,"servings":4,"ingredients":[{"name":"filet de boeuf","quantity":"500","unit_of_measure":"g"},{"name":"vermicelle de riz","quantity":"400","unit_of_measure":"g"},{"name":"citronelle","quantity":"2","unit_of_measure":"tige"},{"name":"germes de soja","quantity":"400","unit_of_measure":"g"},{"name":"feuilles de salade","quantity":"20","unit_of_measure":""},{"name":"concombre","quantity":"3","unit_of_measure":""},{"name":"oignons","quantity":"2","unit_of_measure":""},{"name":"Oeufs","quantity":"6","unit_of_measure":"unités"},{"name":"Farine","quantity":"500","unit_of_measure":"grammes"},{"name":"Sucre","quantity":"250","unit_of_measure":"grammes"},{"name":"Sel","quantity":"5","unit_of_measure":"grammes"},{"name":"Beurre","quantity":"200","unit_of_measure":"grammes"},{"name":"Lait","quantity":"1","unit_of_measure":"litre"},{"name":"Levure chimique","quantity":"2","unit_of_measure":"cuillères à café"},{"name":"Poivre noir","quantity":"1","unit_of_measure":"pincée"},{"name":"Huile olive","quantity":"50","unit_of_measure":"millilitres"},{"name":"Citron","quantity":"1","unit_of_measure":"unité"}],"prepSteps":["Cook the beef in a pan over medium-high heat until browned and cooked to your liking.","Let the beef rest and cool down, then slice thinly.","Cook the vermicelli noodles according to package instructions.","Drain and rinse them under cold water.","Cut the cucumber, onion, and lettuce into small pieces.","Add the sliced beef, cucumber, onion, lettuce, and bean sprouts to a large salad bowl. Mix well and set aside.","Combine the dressing ingredients in a small jar or bowl. Mix well.","Drizzle the dressing over the salad and toss to combine. Serve immediately."],"notes":"","remaining_Ingredients":[{"name":"feuilles de salade","quantity":"0","unit_of_measure":""},{"name":"concombre","quantity":"0","unit_of_measure":""},{"name":"oignons","quantity":"0","unit_of_measure":""},{"name":"Oeufs","quantity":"0","unit_of_measure":"unités"},{"name":"Farine","quantity":"496","unit_of_measure":"grammes"},{"name":"Sucre","quantity":"245","unit_of_measure":"grammes"},{"name":"Sel","quantity":"5","unit_of_measure":"grammes"},{"name":"Beurre","quantity":"196","unit_of_measure":"grammes"},{"name":"Lait","quantity":"0","unit_of_measure":"litre"},{"name":"Levure chimique","quantity":"1.5","unit_of_measure":"cuillères à café"},{"name":"Citron","quantity":"0","unit_of_measure":"unité"}],"category":"Main Course","keywords":["Vietnamese","beef","salad","vermicelli","soybean sprouts","cucumber","lettuce","onion","dressing"]},"role":"assistant"}}],"created":1683269537,"id":"chatcmpl-7CjabXDAYNjaUUgb4I2XQoCzv3Mzj","model":"gpt-3.5-turbo-0301","object":"chat.completion","usage":{"completion_tokens":551,"prompt_tokens":1767,"total_tokens":2318}}'
         response = json.loads(response)
     return response
 
@@ -649,10 +649,16 @@ def save_generated_texts_to_file(self, prompt, ts, suffix=""):
 
 def get_timestamp(self):
     """
-    Returns the current timestamp in the format YYYYMMDD_HHMMSS.
+    Get the timestamp.
+
+    Args:
+        self (object): The object.
+
+    Returns:
+        str: The timestamp. format: YYYY-MM-DD_HHMMSS
     """
-    self.logger.info("Getting the current timestamp. YYYYMMDD_HHMMSS")
-    return datetime.now().strftime("%Y%b%d_%H-%M-%S")
+
+    return datetime.now().strftime("%Y-%m-%d_%H%M%S")
 
 def generate_recipe_image(self,image_prompt, ts):
     """
@@ -676,7 +682,7 @@ def generate_recipe_image(self,image_prompt, ts):
         
         if self.isFakeAI:
             #is fake AI
-            filename = self.image_generation_output_path + "image.jpg"
+            filename = f'{self.image_generation_output_path}recipe_{ts}.png'
             image_url = 'https://oaidalleapiprodscus.blob.core.windows.net/private/org-9ecno2hg2XOJdmvPbRbXQRLC/user-bfmLFpv0uW6To87XhVgdMXvc/img-t3A6SZF6jpGVVracs9Pzmzth.png?st=2023-05-05T15%3A34%3A12Z&se=2023-05-05T17%3A34%3A12Z&sp=r&sv=2021-08-06&sr=b&rscd=inline&rsct=image/png&skoid=6aaadede-4fb3-4698-a8f6-684d7786b067&sktid=a48cca56-e6da-484e-a814-9c849652bcb3&skt=2023-05-05T04%3A48%3A15Z&ske=2023-05-06T04%3A48%3A15Z&sks=b&skv=2021-08-06&sig=svOuX7yQ5twQ4fSE9ou41xl10ohJ98VfXtCr25XnHmQ%3D'
             recipe_image = urlretrieve(image_url, filename)
         else:
@@ -691,7 +697,7 @@ def generate_recipe_image(self,image_prompt, ts):
         
         self.logger.info("Downloading the image...")
         # Set the filename from the directory output and timestamp
-        filename = f'{self.image_generation_output_path}recipe_{ts}.jpg'
+        filename = f'{self.image_generation_output_path}image_recipe_{ts}.png'
         # Download the image
         recipe_image_response = urlretrieve(image_url, filename)
         return filename, image_url, recipe_image_response
@@ -737,21 +743,6 @@ def save_response_to_db(self, response):
     with open("responses.json", "a") as f:
         self.logger.info("Successfully saved the response to the database.")
         f.write(json.dumps(response) + "\n")
-
-def send_response_to_user(self, response):
-    """
-    Send a response to the user.
-    
-    Args:
-        self (object): The object.
-        response (dict): The response to be sent.
-
-    Returns:
-        None
-    """
-    # Print the response to the user
-    self.logger.info("Sending the response to the user...")
-    print(response)
 
 def get_ingredient_list(self):
     """
