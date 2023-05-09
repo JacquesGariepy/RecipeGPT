@@ -2,6 +2,7 @@ import json
 import os
 import re
 import logging
+import requests
 from urllib.request import urlretrieve
 from datetime import datetime
 from pathlib import Path
@@ -206,7 +207,7 @@ class recipe_manager_ai:
 
                         self.logger.info("Create recipe from AI. please wait...")
                         # Create a recipe from the AI
-                        response = create_recipe_from_ai(self, self.isFakeAI, recipe_prompt_message)
+                        response = create_recipe_from_ai(self, recipe_prompt_message)
 
                         self.logger.info("Recipe from AI completed.")
                         image_url = ""
@@ -239,7 +240,7 @@ class recipe_manager_ai:
                                 image_prompt = create_image_prompt(self, json_data)
 
                                 # Generate the recipe image
-                                filename, image_url, recipe_image_response = generate_recipe_image(self, image_prompt, ts)
+                                filename, image_url, recipe_image_response = create_recipe_image_from_ai(self, image_prompt, ts)
 
                                 self.logger.info("Image URL: %s", filename)
                                 
@@ -586,30 +587,39 @@ def save_request_to_db(self, recipe_prompt):
         f.write(json.dumps(request) + "\n")
     return request
 
-def create_recipe_from_ai(self, isFakeAI, request):
-    """
-    Create a recipe using the AI.
-
-    Args:
-        self (object): The object.
-        request (dict): The request to be used in the recipe.
-
-    Returns:
-        dict: The response from the AI.
-    """
-
-    # Generate a recipe using the AI
-    if not isFakeAI:
-        response = openai.ChatCompletion.create(
-                model = self.chat_completion_model,
-                messages=request,
-                temperature=self.chat_completion_temperature,
-                max_tokens=self.chat_completion_max_completion_length)
-        self.logger.info("Generating a recipe using the AI.")
+def create_recipe_from_ai(self, request):
+     # Generate a recipe using the AI
+    if self.isFakeAI:
+        self.logger.info("Generate a recipe using the FakeAI.")
+        return json.loads('{"choices": [{"finish_reason": "stop", "index": 0, "message": {"content": "{"recipe_name": "Banana Bread","dateTime_utc": "2021-07-22T12:00:00Z","preparation_time": 20,"cooking_time": 60,"total_cooking_time": 80,"servings": 8,"ingredients": [{"name": "whole wheat flour","quantity": "1 1/2","unit_of_measure": "cup"},{"name": "baking powder","quantity": "1","unit_of_measure": "tsp"},{"name": "ground cinnamon","quantity": "1","unit_of_measure": "tsp"},{"name": "salt","quantity": "1/4","unit_of_measure": "tsp"},{"name": "ground allspice","quantity": "1/2","unit_of_measure": "tsp"},{"name": "bananas","quantity": "3","unit_of_measure": ""},{"name": "brown sugar","quantity": "1/2","unit_of_measure": "cup"}],"prepSteps": ["Preheat the oven to 350°F (175°C).","In a large bowl, combine flour, baking powder, cinnamon, salt, and allspice.","Mash bananas in a separate bowl until smooth.","Stir mashed bananas and brown sugar into the flour mixture until combined.","Pour mixture into a greased 9x5-inch (23x13-cm) loaf pan.","Bake for 60 minutes or until a toothpick inserted in the center of the bread comes out clean."],"notes": "Allow the bread to cool for at least 10 minutes before slicing and serving.","remaining_Ingredients": [{"name": "whole wheat flour","quantity": "0.5","unit_of_measure": "cup"},{"name": "brown sugar","quantity": "0","unit_of_measure": "cup"},{"name": "bananas","quantity": "0","unit_of_measure": ""}],"category": "Dessert","keywords": ["italian","banana","bread"]}", "role": "assistant"}}], "created": 1683269537, "id": "chatcmpl-7CjabXDAYNjaUUgb4I2XQoCzv3Mzj", "model": "gpt-3.5-turbo-0301", "object": "chat.completion", "usage": {"completion_tokens": 551, "prompt_tokens": 1767, "total_tokens": 2318}}')
     else:
-        # dont work now - need to fix
-        response = '{"choices":[{"finish_reason":"stop","index":0,"message":{"content":{"recipe_name":"Vietnamese Beef Salad","dateTime_utc":"2021-10-29T23:30:00Z","preparation_time":30,"cooking_time":15,"total_cooking_time":45,"servings":4,"ingredients":[{"name":"filet de boeuf","quantity":"500","unit_of_measure":"g"},{"name":"vermicelle de riz","quantity":"400","unit_of_measure":"g"},{"name":"citronelle","quantity":"2","unit_of_measure":"tige"},{"name":"germes de soja","quantity":"400","unit_of_measure":"g"},{"name":"feuilles de salade","quantity":"20","unit_of_measure":""},{"name":"concombre","quantity":"3","unit_of_measure":""},{"name":"oignons","quantity":"2","unit_of_measure":""},{"name":"Oeufs","quantity":"6","unit_of_measure":"unités"},{"name":"Farine","quantity":"500","unit_of_measure":"grammes"},{"name":"Sucre","quantity":"250","unit_of_measure":"grammes"},{"name":"Sel","quantity":"5","unit_of_measure":"grammes"},{"name":"Beurre","quantity":"200","unit_of_measure":"grammes"},{"name":"Lait","quantity":"1","unit_of_measure":"litre"},{"name":"Levure chimique","quantity":"2","unit_of_measure":"cuillères à café"},{"name":"Poivre noir","quantity":"1","unit_of_measure":"pincée"},{"name":"Huile olive","quantity":"50","unit_of_measure":"millilitres"},{"name":"Citron","quantity":"1","unit_of_measure":"unité"}],"prepSteps":["Cook the beef in a pan over medium-high heat until browned and cooked to your liking.","Let the beef rest and cool down, then slice thinly.","Cook the vermicelli noodles according to package instructions.","Drain and rinse them under cold water.","Cut the cucumber, onion, and lettuce into small pieces.","Add the sliced beef, cucumber, onion, lettuce, and bean sprouts to a large salad bowl. Mix well and set aside.","Combine the dressing ingredients in a small jar or bowl. Mix well.","Drizzle the dressing over the salad and toss to combine. Serve immediately."],"notes":"","remaining_Ingredients":[{"name":"feuilles de salade","quantity":"0","unit_of_measure":""},{"name":"concombre","quantity":"0","unit_of_measure":""},{"name":"oignons","quantity":"0","unit_of_measure":""},{"name":"Oeufs","quantity":"0","unit_of_measure":"unités"},{"name":"Farine","quantity":"496","unit_of_measure":"grammes"},{"name":"Sucre","quantity":"245","unit_of_measure":"grammes"},{"name":"Sel","quantity":"5","unit_of_measure":"grammes"},{"name":"Beurre","quantity":"196","unit_of_measure":"grammes"},{"name":"Lait","quantity":"0","unit_of_measure":"litre"},{"name":"Levure chimique","quantity":"1.5","unit_of_measure":"cuillères à café"},{"name":"Citron","quantity":"0","unit_of_measure":"unité"}],"category":"Main Course","keywords":["Vietnamese","beef","salad","vermicelli","soybean sprouts","cucumber","lettuce","onion","dressing"]},"role":"assistant"}}],"created":1683269537,"id":"chatcmpl-7CjabXDAYNjaUUgb4I2XQoCzv3Mzj","model":"gpt-3.5-turbo-0301","object":"chat.completion","usage":{"completion_tokens":551,"prompt_tokens":1767,"total_tokens":2318}}'
-        response = json.loads(response)
+        response = None
+        # Attente de la réponse de l'API tout en affichant une barre de progression
+        with tqdm(total=100) as pbar:
+            while not response:
+                try:
+                    response = openai.ChatCompletion.create(
+                    model = self.chat_completion_model,
+                    messages=request,
+                    temperature=self.chat_completion_temperature,
+                    max_tokens=self.chat_completion_max_completion_length)
+                except requests.exceptions.RequestException:
+                    pass
+                    pbar.update(10)
+        # Utilisation de la réponse de l'API
+        if response.status_code == 200:
+            self.logger.info("Generating a recipe using the AI.")
+            return response
+            pass
+        else:
+            self.logger.info({"Generating a recipe using the AI error.": response.status_code})
+            return response
+        #response = openai.ChatCompletion.create(
+                #model = self.chat_completion_model,
+                #messages=request,
+                #temperature=self.chat_completion_temperature,
+                #max_tokens=self.chat_completion_max_completion_length)
+        self.logger.info("Recipe done.")
     return response
 
 def save_generated_texts_to_file(self, prompt, ts, suffix=""):
@@ -660,7 +670,7 @@ def get_timestamp(self):
 
     return datetime.now().strftime("%Y-%m-%d_%H%M%S")
 
-def generate_recipe_image(self,image_prompt, ts):
+def create_recipe_image_from_ai(self, image_prompt, ts):
     """
     Generate a recipe image using the AI.
 
@@ -674,7 +684,6 @@ def generate_recipe_image(self,image_prompt, ts):
         str: image_url
         str: recipe_image_response
     """
-
     image_url = ""
     try:
         self.logger.info("Generating a recipe image using the AI.")
@@ -686,6 +695,8 @@ def generate_recipe_image(self,image_prompt, ts):
             image_url = 'https://oaidalleapiprodscus.blob.core.windows.net/private/org-9ecno2hg2XOJdmvPbRbXQRLC/user-bfmLFpv0uW6To87XhVgdMXvc/img-t3A6SZF6jpGVVracs9Pzmzth.png?st=2023-05-05T15%3A34%3A12Z&se=2023-05-05T17%3A34%3A12Z&sp=r&sv=2021-08-06&sr=b&rscd=inline&rsct=image/png&skoid=6aaadede-4fb3-4698-a8f6-684d7786b067&sktid=a48cca56-e6da-484e-a814-9c849652bcb3&skt=2023-05-05T04%3A48%3A15Z&ske=2023-05-06T04%3A48%3A15Z&sks=b&skv=2021-08-06&sig=svOuX7yQ5twQ4fSE9ou41xl10ohJ98VfXtCr25XnHmQ%3D'
             recipe_image = urlretrieve(image_url, filename)
         else:
+            self.logger.info("Generating a recipe image using the AI.")
+            #add loading
             response = openai.Image.create(
                 prompt=image_prompt,
                 n=self.image_generation_n,
