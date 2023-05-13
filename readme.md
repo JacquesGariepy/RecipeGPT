@@ -64,14 +64,14 @@ Exemple recipe json response from model :
 `
 
 ## Future modifications
-Future modifications to the application may include adding additional AI models to generate recipes, incorporating user feedback to improve recipe recommendations, and integrating with external APIs to retrieve ingredient and nutritional information.
+- Future modifications to the application may include adding additional AI models to generate recipes, incorporating user feedback to improve recipe recommendations, and integrating with external APIs to retrieve ingredient and nutritional information.
 
-The system can prompt the user for feedback on the recipe, such as whether they like it, what changes they would make, and any additional ingredients they would like to include. This feedback can be used to further refine the recipe recommendation algorithm.
+- The system can prompt the user for feedback on the recipe, such as whether they like it, what changes they would make, and any additional ingredients they would like to include. This feedback can be used to further refine the recipe recommendation algorithm.
 
-Using Langchain
-Using gpt4all or other open source model
-Using the nltk (Natural Language Toolkit) library https://www.nltk.org/ for our application. 
-using FastApi to create a Python API
-using uvicorn for the ASGI web server implementation for Python. 
-Using React to call the Python API.
+- Using Langchain
+- Using gpt4all or other open source model
+- Using the nltk (Natural Language Toolkit) library https://www.nltk.org/ for our application. 
+- using FastApi to create a Python API
+- Using uvicorn for the ASGI web server implementation for Python. 
+- Using React to call the Python API.
 
