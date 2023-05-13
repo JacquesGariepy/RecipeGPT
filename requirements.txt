@@ -1,6 +1,5 @@
-pip installpip
-pip installopenai
-pip installnumpy
+pip install openai
+pip install numpy
 pip install nomic
 pip install pyllamacpp
 pip install tiktoken

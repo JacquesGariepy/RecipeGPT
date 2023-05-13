@@ -1,5 +1,12 @@
 {
     "configs": {
+      "general": {
+        "is_fake_ai": false,
+        "verbose" : false,
+        "save_prompt_on_completion": true,
+        "markdown": false,
+        "encoding_name":"cl100k_base" 
+      },
       "recipe_manager_ai": {
         "chat_completion": {
           "max_token_length": 8000,
@@ -14,13 +21,22 @@
           "best_of": 1,
           "logprobs": 0,
           "echo": false,
-          "model": "gpt-3.5-turbo"
+          "model": "gpt-3.5-turbo",
+          "output_path": "c:/temp/",
+          "prompt_path" : "./prompts"
         },
         "image_generation":
         {
             "n": 1,
-            "size": "512x512"
+            "size": "512x512",
+            "output_path": "c:/temp/",
+            "prompt_path" : "./prompts"
+        },
+        "db":
+        {
+          "path" : "./db"
         }
+
       }
     }
   }
