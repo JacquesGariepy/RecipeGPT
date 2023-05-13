@@ -1,9 +1,7 @@
-import asyncio
 import json
 import os
 import re
 import logging
-import requests
 from urllib.request import urlretrieve
 from datetime import datetime
 from pathlib import Path
@@ -11,52 +9,68 @@ from typing import Any, List, Optional, Union
 from tqdm import tqdm
 import openai
 import tiktoken
+import asyncio
 
-logging.basicConfig(
-    format="%(asctime)s | %(levelname)s: %(message)s",
-    datefmt="%b/%d %H:%M:%S",
-    level=logging.INFO,
-)
-
-# Set tiktoken encoding
-enc = tiktoken.get_encoding("cl100k_base")
-
-# Load credentials from secrets.json file
-with open('secrets.json', 'r') as f:
-    credentials = json.load(f)
-
-# Load credentials from configs.json file
-with open('configs.json', 'r') as f:
-    configs = json.load(f)
-# Define the directory where prompts will be stored
-dir_prompt = './prompts'
-
-# Define the order in which prompts will be loaded
-prompt_load_order = ['prompt_role',
-                     'prompt_environment',
-                     'prompt_input_output_format',
-                     'prompt_query']
-
-prompt_image_load_order = ['prompt_image']
-
-AVAILABLE_MODELS = [
-    "gpt-4",
-    "gpt-4-0314",
-    "gpt-4-32k",
-    "gpt-4-32k-0314",
-    "gpt-3.5-turbo",
-    "gpt-3.5-turbo-0301",
-    "text-davinci-003",
-    "code-davinci-002",
-]
-
-# Define the recipe_manager class
 class recipe_manager_ai:
-    def __init__(self, credentials, configs):
+    """
+    This class is used to manage the recipe manager AI.
+    """
+    
+    def read_credential():
+        with open('secrets.json', 'r') as f:
+            credentials = json.load(f)
+        return credentials
+    
+    def read_configs():
+        # Load credentials from configs.json file
+        with open('configs.json', 'r') as f:
+            configs = json.load(f)
+        return configs
 
+    def __init__(self):
+        
+        logging.basicConfig(
+            format="%(asctime)s | %(levelname)s: %(message)s",
+            datefmt="%b/%d %H:%M:%S",
+            level=logging.INFO
+        )
+
+        # get chat completion parameters in configs.json file
+        self.configs = recipe_manager_ai.read_configs()
+
+        # Define the order in which prompts will be loaded
+        self.prompt_load_order = [
+            'prompt_role',
+            'prompt_environment',
+            'prompt_input_output_format',
+             'prompt_query'
+        ]
+
+        self.prompt_image_load_order = [
+            'prompt_image'
+        ]
+
+        self.AVAILABLE_MODELS = [  
+            "gpt-4",
+            "gpt-3.5-turbo",
+            "text-davinci-003",
+            "text-davinci-002",
+            "text-davinci-001",
+            "text-curie-001",
+            "text-babbage-001",
+            "text-ada-001",
+            "davinci",
+            "curie",
+            "babbage",
+            "ada",
+            "gpt2",
+        ]
+  
         self.logger = logging.getLogger(__name__)
         self.logger.info("Initializing recipe_manager_ai class.")
+        
         # Set OpenAI API key
+        credentials = recipe_manager_ai.read_credential()
         openai.api_key = credentials["recipe_manager_ai"]["openai_api_key"]
         
         # Initialize list of ingredients
@@ -68,57 +82,67 @@ class recipe_manager_ai:
         # Initialize messages list
         self.messages = []
         
-        self.verbose = False
-        self.out_dir = "c:/temp/"
-        self.image_generation_output_path = "c:/temp/"
-        self.save_prompt: bool = False,
-        self.markdown: bool = False,
-        self.verbose: bool = False,
-        self.isFakeAI: bool = False
-        # get chat completion parameters in configs.json file
-        chat_completion = configs['configs']['recipe_manager_ai']['chat_completion']
+        general_configs = self.configs['configs']['general']
+        self.save_prompt_on_completion: bool = general_configs["save_prompt_on_completion"]
+        self.markdown: bool = general_configs["markdown"]
+        self.verbose: bool = general_configs["verbose"]
+        self.isFakeAI: bool = general_configs["is_fake_ai"]
+        
+        # Set tiktoken encoding
+        self.enc = tiktoken.get_encoding(general_configs["encoding_name"])
+        
+        chat_completion_configs = self.configs['configs']['recipe_manager_ai']['chat_completion']
         # Set maximum token length
-        self.chat_completion_max_token_length = chat_completion['max_token_length']
+        self.chat_completion_max_token_length = chat_completion_configs['max_token_length']
         
         # Set maximum completion length
-        self.chat_completion_max_completion_length = chat_completion["max_completion_length"]
+        self.chat_completion_max_completion_length = chat_completion_configs["max_completion_length"]
         
         # Set temperature for text generation
-        self.chat_completion_temperature = chat_completion["temperature"]
+        self.chat_completion_temperature = chat_completion_configs["temperature"]
         
         # Set number of completions to generate
-        self.chat_completion_n= chat_completion["n"]
+        self.chat_completion_n= chat_completion_configs["n"]
         
         # Set top p value for text generation
-        self.chat_completion_top_p = chat_completion["top_p"]
+        self.chat_completion_top_p = chat_completion_configs["top_p"]
         
         # Set frequency penalty for text generation
-        self.chat_completion_frequency_penalty = chat_completion["frequency_penalty"]
+        self.chat_completion_frequency_penalty = chat_completion_configs["frequency_penalty"]
         
         # Set presence penalty for text generation
-        self.chat_completion_presence_penalty = chat_completion["presence_penalty"]
+        self.chat_completion_presence_penalty = chat_completion_configs["presence_penalty"]
         
         # Set stop token for text generation
-        self.chat_completion_stop = chat_completion["stop"]
+        self.chat_completion_stop = chat_completion_configs["stop"]
         
         # Set streaming mode to False
-        self.chat_completion_stream = chat_completion["stream"]
+        self.chat_completion_stream = chat_completion_configs["stream"]
         
         # Set number of best completions to return
-        self.chat_completion_best_of = chat_completion["best_of"]
+        self.chat_completion_best_of = chat_completion_configs["best_of"]
         
         # Set logprobs to 0
-        self.chat_completion_logprobs = chat_completion["logprobs"]
+        self.chat_completion_logprobs = chat_completion_configs["logprobs"]
         
         # Set echo mode to False
-        self.chat_completion_echo = chat_completion["echo"]
+        self.chat_completion_echo = chat_completion_configs["echo"]
         
         # Set model to use for text generation
-        self.chat_completion_model = chat_completion["model"]
+        self.chat_completion_model = chat_completion_configs["model"]
 
-        image_generation = configs['configs']['recipe_manager_ai']['image_generation']
-        self.image_generation_n = image_generation["n"]
-        self.image_generation_size = image_generation["size"] 
+        # Set prompt path for text generation
+        self.chat_completion_output_path = chat_completion_configs["output_path"]
+        self.chat_completion_prompt_path = chat_completion_configs["prompt_path"]
+
+        image_generation_configs = self.configs['configs']['recipe_manager_ai']['image_generation']
+        self.image_generation_n = image_generation_configs["n"]
+        self.image_generation_size = image_generation_configs["size"] 
+        self.image_generation_output_path = image_generation_configs["output_path"]
+        self.image_generation_prompt_path = image_generation_configs["prompt_path"]
+
+        db_configs = self.configs['configs']['recipe_manager_ai']['db']
+        self.db_path = db_configs["path"]
 
     def main(self):
         #"""
@@ -189,9 +213,8 @@ class recipe_manager_ai:
 
                         instructions = input("Please provide the necessary instruction for the recipe, such as the type of dish, the region, allergies, cooking time, number of servings, and any ingredients to avoid. For example: type of dessert, Italian cuisine, gluten-free, nut allergy, no cinnamon, 6 servings, preparation time of no more than 60 minutes, microwave cooking. Leave blank if there are no instructions.: ")
                 
-                        is_strict_ingredients = 'yes'
+                        is_strict_ingredients = input("Should the ingredients be strict? Please enter 'yes' or 'no': ").lower()
                         while is_strict_ingredients not in ['yes', 'no']:
-                            is_strict_ingredients = input("Should the ingredients be strict? Please enter 'yes' or 'no': ").lower()
                             if not is_strict_ingredients == 'yes' or not is_strict_ingredients == 'no':
                                 raise Exception("Invalid input. Please enter 'yes' or 'no'.: ")
                     
@@ -251,21 +274,36 @@ class recipe_manager_ai:
                         
                         self.logger.info("End of recipe generation.")
                         
-                        return recipe_response, recipe_image_response
+                        return recipe_response, image_url, recipe_image_response
                     else:
                         raise Exception("Invalid response. Please leave it blank or '1', '2', '3', or '4'.") 
             except Exception as e:
                 self.logger.info("Error: %s", e)
                 continue
 
-def validate_model(self, model):
-    if model not in AVAILABLE_MODELS:
-        self.logger.info(f"Invalid model '{model}', available models: {', '.join(AVAILABLE_MODELS)}")
+def validate_model(self, model: str) -> None:
+    """
+    Validate the model.
+        
+        Args:
+            self (object): The object.
+            model (str): The model to validate.
+            
+            Raises:
+                ValueError: If the model is invalid.
+            
+            Returns:
+                None
+                    
+    """
+
+    if model not in self.AVAILABLE_MODELS:
+        self.logger.info(f"Invalid model '{model}', available models: {', '.join(self.AVAILABLE_MODELS)}")
         raise ValueError(
-            f"Invalid model '{model}', available models: {', '.join(AVAILABLE_MODELS)}"
+            f"Invalid model '{model}', available models: {', '.join(self.AVAILABLE_MODELS)}"
         )
 
-def has_ingredient(self, ingredient):
+def has_ingredient(self, ingredient : str or dict) -> bool:
     """
     Check if an ingredient is already in the ingredient list.
     
@@ -277,29 +315,34 @@ def has_ingredient(self, ingredient):
     Returns:
         bool: True if the ingredient is already in the list, False otherwise.
     """
-    self.logger.info("Checking if the item is already in the list.")
-    # Check if the item is already in the list
-    if isinstance(ingredient, str):
-        self.logger.info("Parsing item from string.")
-        _item = json.loads(ingredient)
-    elif isinstance(ingredient, dict):
-        self.logger.info("Parsing item from dictionary.")
-        _item = ingredient
-    else:
-        self.logger.info("Invalid item format.")
-        return False
-    self.logger.info("Getting ingredient list.")
-    ingredient_list = get_ingredient_list(self)
-    for tmp_item in ingredient_list:
-        self.logger.info("Parsing item from string.")
-        tmp_item = json.loads(tmp_item)
+    try:
         self.logger.info("Checking if the item is already in the list.")
-        if _item["name"] == tmp_item["name"]:
-            self.logger.info("Item already in list.")
-            return True
-    return False
+        # Check if the item is already in the list
+        if isinstance(ingredient, str):
+            self.logger.info("Parsing item from string.")
+            _item = json.loads(ingredient)
+        elif isinstance(ingredient, dict):
+            self.logger.info("Parsing item from dictionary.")
+            _item = ingredient
+        else:
+            self.logger.info("Invalid item format.")
+            return False
+        self.logger.info("Getting ingredient list.")
+        ingredient_list = get_ingredient_list(self)
+        for tmp_item in ingredient_list:
+            self.logger.info("Parsing item from string.")
+            tmp_item = json.loads(tmp_item)
+            self.logger.info("Checking if the item is already in the list.")
+            if _item["name"] == tmp_item["name"]:
+                self.logger.info("Item already in list.")
+                return True
+        self.logger.info("Item not in list.")
+        return False
+    except:
+        self.logger.info("Error checking if the item is already in the list.")
+        return False
 
-def verify_format(self, item):
+def verify_format(self, item : str) -> bool:
     """
     Verify if the item format is valid.
     
@@ -310,23 +353,27 @@ def verify_format(self, item):
     Returns:
         bool: True if the item format is valid, False otherwise.
     """
-    self.logger.info("Verifying item format.")
-    # Verify if the item format is valid
-    item_info = item.split("-")
-    if len(item_info) == 3:
-        self.logger.info("Valid format.")
-        try:
-            float(item_info[1])
+    try:
+        self.logger.info("Verifying item format.")
+        # Verify if the item format is valid
+        item_info = item.split("-")
+        if len(item_info) == 3:
             self.logger.info("Valid format.")
-            return True
-        except:
+            try:
+                float(item_info[1])
+                self.logger.info("Valid format.")
+                return True
+            except:
+                self.logger.info("Invalid format.")
+                return False
+        else:
             self.logger.info("Invalid format.")
             return False
-    else:
-        self.logger.info("Invalid format.")
+    except:
+        self.logger.info("Error verifying format.")
         return False
     
-def create_ingredient_json(self, item):
+def create_ingredient_json(self, item  : str) -> str:
     """
     Create a JSON item from the input string.
 
@@ -337,23 +384,27 @@ def create_ingredient_json(self, item):
     Returns:
         str: The JSON item.
     """
+    try:
     
-    # Create a JSON item from the input string
-    self.logger.info("Creating JSON item.")
-    item_info = item.split("-")
-    if len(item_info) >= 3:
-        self.logger.info("Valid format.")
-        item_dict = {"name": item_info[0], "quantity": item_info[1], "unit_of_measure": item_info[2]}
-    else:
-        # Handle the error here, for example by setting item_dict to None or raising an exception
-        raise Exception("Invalid item format")
+        # Create a JSON item from the input string
+        self.logger.info("Creating JSON item.")
+        item_info = item.split("-")
+        if len(item_info) >= 3:
+            self.logger.info("Valid format.")
+            item_dict = {"name": item_info[0], "quantity": item_info[1], "unit_of_measure": item_info[2]}
+        else:
+            # Handle the error here, for example by setting item_dict to None or raising an exception
+            raise Exception("Invalid item format")
+        
+        # Convert the item dictionary to a JSON string
+        self.logger.info("Converting item dictionary to JSON string.")
+        json_item = json.dumps(item_dict)
+        return json_item
+    except:
+        self.logger.info("Error creating JSON item.")
+        return None
     
-    # Convert the item dictionary to a JSON string
-    self.logger.info("Converting item dictionary to JSON string.")
-    json_item = json.dumps(item_dict)
-    return json_item
-
-def save_ingredient_to_local_memory(self, json_item):
+def save_ingredient_to_local_memory(self, json_item : str) -> bool:
     """
     Save an ingredient to local memory.
 
@@ -364,18 +415,22 @@ def save_ingredient_to_local_memory(self, json_item):
     Returns:
         None
     """
+    try:
+        # Load the list of ingredients from local memory
+        ingredient_list = get_ingredient_list(self)
 
-    # Load the list of ingredients from local memory
-    ingredient_list = get_ingredient_list(self)
+        # Append the new ingredient to the list
+        ingredient_list.append(json_item)
 
-    # Append the new ingredient to the list
-    ingredient_list.append(json_item)
+        # Save the updated list back to local memory
+        with open(self.db_path + "/items.json", "w") as f:
+            json.dump(ingredient_list, f)
+            return True
+    except:
+        self.logger.info("Error saving ingredient to local memory.")
+        return False
 
-    # Save the updated list back to local memory
-    with open("items.json", "w") as f:
-        json.dump(ingredient_list, f)
-
-def delete_ingredients_to_local_memory(self):
+def delete_ingredients_to_local_memory(self)-> bool:
     """
     Delete all ingredients in local memory.
 
@@ -387,10 +442,16 @@ def delete_ingredients_to_local_memory(self):
     """
     self.logger.info("Deleting all ingredients in local memory.")
     # Delete all items from the list in local memory
-    with open("items.json", "w") as f:
-        json.dump([], f)
+    try:
+        
+        with open(self.db_path + "/items.json", "w") as f:
+            json.dump([], f)
+            return True
+    except:
+        self.logger.info("Error deleting all ingredients in local memory.")
+        return False
 
-def delete_ingredient_to_local_memory(self, item_name):
+def delete_ingredient_to_local_memory(self, item_name)-> bool:
     """
     Delete an ingredient in local memory.
 
@@ -401,20 +462,26 @@ def delete_ingredient_to_local_memory(self, item_name):
     Returns:
         None
     """
+    try:
+        # Load the list of items from local memory
+        ingredient_list = get_ingredient_list(self)
 
-    # Load the list of items from local memory
-    ingredient_list = get_ingredient_list(self)
+        # Remove the item with the specified name from the list
+        for item in ingredient_list:
+            item = json.loads(item)
+            if item["name"] == item_name:
+                ingredient_list.remove(item)
 
-    # Remove the item with the specified name from the list
-    for item in ingredient_list:
-        item = json.loads(item)
-        if item["name"] == item_name:
-            ingredient_list.remove(item)
-    # Save the updated list back to local memory
-    with open("items.json", "w") as f:
-        json.dump(ingredient_list, f)
+        # load the list of items from local memory
+        with open(self.db_path + "/items.json", "w") as f:
+            # Save the updated list back to local memory
+            json.dump(ingredient_list, f)
+            return True
+    except:
+        self.logger.info("Error deleting ingredient in local memory.")
+        return False
 
-def create_recipe_prompt(self, ingredient_list, instructions, is_strict_ingredients):
+def create_recipe_prompt(self, ingredient_list : dict, instructions : str, is_strict_ingredients : bool) -> list:
     """
     Create a recipe prompt using the input from the request question and the ingridient in ingredient list.
 
@@ -428,54 +495,65 @@ def create_recipe_prompt(self, ingredient_list, instructions, is_strict_ingredie
         str: The recipe prompt.
     """
     
-    # load the prompt files in the specified order
-    prompt = prompt_loading(self)
-    # add instruction and is_strict_ingredients to the prompt
-    ingredients_prompt = f'{{"instruction":"{instructions}",'
-    ingredients_prompt += f'"is_strict_ingredients":"{is_strict_ingredients}",'
-    temp_ingredients = ""
-    i = 0
-    for item in ingredient_list:
-        item = json.loads(item)
-        if i != 0:
-            temp_ingredients += ","
-        temp_ingredients += f'{{"name":"{item["name"]}","quantity":"{item["quantity"]}","unit_of_measure":"{item["unit_of_measure"]}"}}'
-        i+=1
-    ingredients_prompt += f'"ingredients":[{temp_ingredients}]}}'
+    try:
 
-    if not is_json_valid(self, ingredients_prompt):
+        # load the prompt files in the specified order
+        prompt = prompt_loading(self)
+        # add instruction and is_strict_ingredients to the prompt
+        ingredients_prompt = f'{{"instruction":"{instructions}",'
+        ingredients_prompt += f'"is_strict_ingredients":"{is_strict_ingredients}",'
+        temp_ingredients = ""
+        i = 0
+        for item in ingredient_list:
+            self.logger.info("Creating JSON item.")
+            
+            # Create a JSON item from the input string
+            item = json.loads(item)
+            if i != 0:
+                temp_ingredients += ","
+            temp_ingredients += f'{{"name":"{item["name"]}","quantity":"{item["quantity"]}","unit_of_measure":"{item["unit_of_measure"]}"}}'
+            i+=1
+        
+        # add the ingredients to the prompt
+        ingredients_prompt += f'"ingredients":[{temp_ingredients}]}}'
+
+        # check if the ingredients are in the correct format
+        if not is_json_valid(self, ingredients_prompt):
+            print(ingredients_prompt)
+            print("Invalid JSON format")
+            return ""
+
         print(ingredients_prompt)
-        print("Invalid JSON format")
-        return ""
+        # Replace the placeholder in the prompt with the ingredients
+        prompt = prompt.replace(f"[ingredients_prompt]", f"[{ingredients_prompt}]")
 
-    print(ingredients_prompt)
-    # Replace the placeholder in the prompt with the ingredients
-    prompt = prompt.replace(f"[ingredients_prompt]", f"[{ingredients_prompt}]")
+        if check_if_prompt_is_too_long(self, prompt):
+            # find how to truncate the prompt - next version
+            return ""
 
-    if check_if_prompt_is_too_long(self, prompt):
-        # find how to truncate the prompt - next version
-        return ""
+        print(prompt)
 
-    print(prompt)
+        pattern = r"\[(system|user|assistant)\]\s*(.*)"
+        current_message = {}
+        messages = []
+        for line in prompt.split("\n"):
+            match = re.match(pattern, line)
+            if match:
+                if current_message:
+                    messages.append(current_message)
+                current_message = {"role": match.group(1), "content": match.group(2).strip()}
+            elif current_message:
+                current_message["content"] += " " + line.strip()
 
-    pattern = r"\[(system|user|assistant)\]\s*(.*)"
-    current_message = {}
-    messages = []
-    for line in prompt.split("\n"):
-        match = re.match(pattern, line)
-        if match:
-            if current_message:
-                messages.append(current_message)
-            current_message = {"role": match.group(1), "content": match.group(2).strip()}
-        elif current_message:
-            current_message["content"] += " " + line.strip()
+        if current_message:
+            messages.append(current_message)
 
-    if current_message:
-        messages.append(current_message)
+        return messages
+    except:
+        self.logger.info("Error creating recipe prompt.")
+        return []
 
-    return messages
-
-def prompt_loading(self):
+def prompt_loading(self)-> str:
     """
     Load the prompt files in the specified order.
 
@@ -488,16 +566,21 @@ def prompt_loading(self):
     self.logger.info("Loading the prompt files in the specified order.")
     prompt = ""
     
-    for prompt_name in prompt_load_order:
-        self.logger.info(f"Loading prompt file: {prompt_name}")
-        fp_prompt = os.path.join(dir_prompt, prompt_name + '.txt')
-        with open(fp_prompt) as f:
-            self.logger.info(f"Adding prompt file: {prompt_name}")
-            prompt += f"{f.read()}"
-            prompt += "\n\n"
-    return prompt
+    try:
+        
+        for prompt_name in self.prompt_load_order:
+            self.logger.info(f"Loading prompt file: {prompt_name}")
+            fp_prompt = os.path.join(self.chat_completion_prompt_path, prompt_name + '.txt')
+            with open(fp_prompt) as f:
+                self.logger.info(f"Adding prompt file: {prompt_name}")
+                prompt += f"{f.read()}"
+                prompt += "\n\n"
+        return prompt
+    except:
+        self.logger.info("Error loading prompt files.")
+        return ""
 
-def prompt_image_loading(self):
+def prompt_image_loading(self)-> str:
     """
     Load the prompt files in the specified order.
 
@@ -507,20 +590,23 @@ def prompt_image_loading(self):
     Returns:
         None
     """
-    self.logger.info("Loading the prompt files in the specified order.")
-    prompt = ""
-    
-    for prompt_name in prompt_image_load_order:
-        self.logger.info(f"Loading prompt image file: {prompt_name}")
-        fp_prompt = os.path.join(dir_prompt, prompt_name + '.txt')
-        with open(fp_prompt) as f:
-            self.logger.info(f"Adding prompt file: {prompt_name}")
-            prompt += f"{f.read()}"
-            prompt += "\n\n"
-    return prompt
+    try:
+        self.logger.info("Loading the prompt files in the specified order.")
+        prompt = ""
+        
+        for prompt_name in self.prompt_image_load_order:
+            self.logger.info(f"Loading prompt image file: {prompt_name}")
+            fp_prompt = os.path.join(self.image_generation_prompt_path, prompt_name + '.txt')
+            with open(fp_prompt) as f:
+                self.logger.info(f"Adding prompt file: {prompt_name}")
+                prompt += f"{f.read()}"
+                prompt += "\n\n"
+        return prompt
+    except:
+        self.logger.info("Error loading prompt files.")
+        return ""
 
-
-def check_if_prompt_is_too_long(self, prompt):
+def check_if_prompt_is_too_long(self, prompt: str)-> bool:
     """
     Truncate the prompt if it's too long.
 
@@ -532,7 +618,7 @@ def check_if_prompt_is_too_long(self, prompt):
         None
     """
     #Encodes a string into tokens.
-    tokens = enc.encode(prompt)
+    tokens = self.enc.encode(prompt)
     if len(tokens) > self.chat_completion_max_token_length - \
                 self.chat_completion_max_completion_length:
             print('Prompt too long. truncated.')
@@ -541,7 +627,7 @@ def check_if_prompt_is_too_long(self, prompt):
             return True
     return False
 
-def create_image_prompt(self, recipe_prompt):
+def create_image_prompt(self, recipe_prompt: dict) -> str:
     """
     Create an image prompt using the input from the recipe prompt.
 
@@ -569,7 +655,7 @@ def create_image_prompt(self, recipe_prompt):
     self.logger.info(f"Image Prompt: {image_prompt}")
     return image_prompt
 
-def save_request_to_db(self, recipe_prompt):
+def save_request_to_db(self, recipe_prompt : str) -> bool:
     """
     Create a JSON object for the request and save it to the database.
     
@@ -580,15 +666,17 @@ def save_request_to_db(self, recipe_prompt):
     Returns:
         dict: The request.
     """
-
-    # Create a JSON object for the request and save it to the database
-    ingredient_list = get_ingredient_list(self)
-    request = {"recipe_prompt": recipe_prompt}
-    with open("requests.json", "a") as f:
-        f.write(json.dumps(request) + "\n")
-    return request
-
-
+    try:
+        # Create a JSON object for the request and save it to the database
+        ingredient_list = get_ingredient_list(self)
+        request = {"recipe_prompt": recipe_prompt}
+        with open(self.db_path + "/requests.json", "a") as f:
+            f.write(json.dumps(request) + "\n")
+        return True
+    except:
+        self.logger.info("Error saving request to database.")
+        return False
+    
 async def dispatch_openai_requests(
     self,
     messages_list: list[list[dict[str,Any]]],
@@ -618,24 +706,29 @@ async def dispatch_openai_requests(
     ]
     return await asyncio.gather(*async_responses) 
 
-def create_recipe_from_ai(self, request):
+def create_recipe_from_ai(self, request : str) -> dict:
      # Generate a recipe using the AI
-    if self.isFakeAI:
-        self.logger.info("Generate a recipe using the FakeAI.")
-        return json.loads('{"choices": [{"finish_reason": "stop", "index": 0, "message": {"content": "{"recipe_name": "Banana Bread","dateTime_utc": "2021-07-22T12:00:00Z","preparation_time": 20,"cooking_time": 60,"total_cooking_time": 80,"servings": 8,"ingredients": [{"name": "whole wheat flour","quantity": "1 1/2","unit_of_measure": "cup"},{"name": "baking powder","quantity": "1","unit_of_measure": "tsp"},{"name": "ground cinnamon","quantity": "1","unit_of_measure": "tsp"},{"name": "salt","quantity": "1/4","unit_of_measure": "tsp"},{"name": "ground allspice","quantity": "1/2","unit_of_measure": "tsp"},{"name": "bananas","quantity": "3","unit_of_measure": ""},{"name": "brown sugar","quantity": "1/2","unit_of_measure": "cup"}],"prepSteps": ["Preheat the oven to 350°F (175°C).","In a large bowl, combine flour, baking powder, cinnamon, salt, and allspice.","Mash bananas in a separate bowl until smooth.","Stir mashed bananas and brown sugar into the flour mixture until combined.","Pour mixture into a greased 9x5-inch (23x13-cm) loaf pan.","Bake for 60 minutes or until a toothpick inserted in the center of the bread comes out clean."],"notes": "Allow the bread to cool for at least 10 minutes before slicing and serving.","remaining_Ingredients": [{"name": "whole wheat flour","quantity": "0.5","unit_of_measure": "cup"},{"name": "brown sugar","quantity": "0","unit_of_measure": "cup"},{"name": "bananas","quantity": "0","unit_of_measure": ""}],"category": "Dessert","keywords": ["italian","banana","bread"]}", "role": "assistant"}}], "created": 1683269537, "id": "chatcmpl-7CjabXDAYNjaUUgb4I2XQoCzv3Mzj", "model": "gpt-3.5-turbo-0301", "object": "chat.completion", "usage": {"completion_tokens": 551, "prompt_tokens": 1767, "total_tokens": 2318}}')
-    else:
-        # Attente de la réponse de l'API tout en affichant une barre de progression
-        response = openai.ChatCompletion.create(
-            model = self.chat_completion_model,
-            messages=request,
-            temperature=self.chat_completion_temperature,
-            max_tokens=self.chat_completion_max_completion_length,
-            top_p=self.chat_completion_top_p,
-        )
-        self.logger.info("Recipe done.")
-        return response
+    try:
+        if self.isFakeAI:
+            self.logger.info("Generate a recipe using the FakeAI.")
+            fake_json = json.loads('{"content":{"recipe_name":"Vietnamese Beef Noodle Salad","dateTime_utc":"2021 - 09 - 15 T19: 45: 00 Z","preparation_time":25,"cooking_time":15,"total_cooking_time":40,"servings":4,"ingredients":[{"name":"filet de boeuf","quantity":"500","unit_of_measure":"g"},{"name":"vermicelle de riz","quantity":"400","unit_of_measure":"g"},{"name":"Farine","quantity":"500","unit_of_measure":"g"}],"prepSteps":"Cook the vermicelli noodles according to the package","role":"assistant"}}')
+            return fake_json
+        else:
+            # Attente de la réponse de l'API tout en affichant une barre de progression
+            response = openai.ChatCompletion.create(
+                model = self.chat_completion_model,
+                messages=request,
+                temperature=self.chat_completion_temperature,
+                max_tokens=self.chat_completion_max_completion_length,
+                top_p=self.chat_completion_top_p,
+            )
+            self.logger.info("Recipe done.")
+            return response
+    except:
+        self.logger.info("Error generating recipe.")
+        return None
 
-def save_generated_texts_to_file(self, prompt, ts, suffix=""):
+def save_generated_texts_to_file(self, prompt: str, ts: str, suffix="") -> str:
     """ 
     Save the generated texts to a file.
 
@@ -646,29 +739,35 @@ def save_generated_texts_to_file(self, prompt, ts, suffix=""):
     Returns:
         None
     """
-    self.logger.info("Saving the generated texts to a file.")
-    if self.out_dir:
+    try:
         self.logger.info("Saving the generated texts to a file.")
-        out_path = Path(self.out_dir)
+        
+        self.logger.info("Saving the generated texts to a file.")
+        out_path = Path(self.chat_completion_output_path)
         
         self.logger.info(f"Saving output to {out_path}")
         out_path.mkdir(parents=True, exist_ok=True)
-
-        if self.verbose or not self.out_dir:
+        filename = ""
+        if self.verbose or not self.chat_completion_output_path:
             print(f"Prompt:\n{prompt}\n\n")
             self.logger.info(f"Saving output to {out_path}")
-        if self.out_dir:
+        if self.chat_completion_output_path:
             output_content = (
                 f"{prompt}"
-                if self.save_prompt
+                if self.save_prompt_on_completion
                 else prompt
             )  # add prompt to output if save_prompt is True
-            output_file = out_path / f"result_{suffix}{ts}.txt"
+            filename = out_path / f"result_{suffix}{ts}.txt"
+            output_file = filename
             output_file = (
                 output_file.with_suffix(".md") if self.markdown else output_file
             )
             with open(output_file, "w", encoding="utf-8") as f:
                 f.write(output_content)
+        return filename
+    except:
+        self.logger.info("Error saving generated texts to a file.")
+        return "no file created"
 
 def get_timestamp(self):
     """
@@ -683,7 +782,7 @@ def get_timestamp(self):
 
     return datetime.now().strftime("%Y-%m-%d_%H%M%S")
 
-def create_recipe_image_from_ai(self, image_prompt, ts):
+def create_recipe_image_from_ai(self, image_prompt : str, ts : str) -> tuple:
     """
     Generate a recipe image using the AI.
 
@@ -701,11 +800,11 @@ def create_recipe_image_from_ai(self, image_prompt, ts):
     try:
         self.logger.info("Generating a recipe image using the AI.")
         request_url = ""
-        
+        recipe_image_response = None
         if self.isFakeAI:
             #is fake AI
             filename = f'{self.image_generation_output_path}recipe_{ts}.png'
-            image_url = 'https://oaidalleapiprodscus.blob.core.windows.net/private/org-9ecno2hg2XOJdmvPbRbXQRLC/user-bfmLFpv0uW6To87XhVgdMXvc/img-t3A6SZF6jpGVVracs9Pzmzth.png?st=2023-05-05T15%3A34%3A12Z&se=2023-05-05T17%3A34%3A12Z&sp=r&sv=2021-08-06&sr=b&rscd=inline&rsct=image/png&skoid=6aaadede-4fb3-4698-a8f6-684d7786b067&sktid=a48cca56-e6da-484e-a814-9c849652bcb3&skt=2023-05-05T04%3A48%3A15Z&ske=2023-05-06T04%3A48%3A15Z&sks=b&skv=2021-08-06&sig=svOuX7yQ5twQ4fSE9ou41xl10ohJ98VfXtCr25XnHmQ%3D'
+            image_url = 'https://oaidalleapiprodscus.blob.core.windows.net/private/org-9ecno2hg2XOJdmvPbRbXQRLC/user-bfmLFpv0uW6To87XhVgdMXvc/img-fTlJXSocU0ErRaZJUADEw3CP.png?st=2023-05-12T02%3A39%3A14Z&se=2023-05-12T04%3A39%3A14Z&sp=r&sv=2021-08-06&sr=b&rscd=inline&rsct=image/png&skoid=6aaadede-4fb3-4698-a8f6-684d7786b067&sktid=a48cca56-e6da-484e-a814-9c849652bcb3&skt=2023-05-12T01%3A45%3A52Z&ske=2023-05-13T01%3A45%3A52Z&sks=b&skv=2021-08-06&sig=U58aKHFcS2reR%2BP0s%2Be5zn90wqGjJrfCmkZiplhHaAE%3D'
             recipe_image_response = urlretrieve(image_url, filename)
         else:
             self.logger.info("Generating a recipe image using the AI.")
@@ -724,12 +823,12 @@ def create_recipe_image_from_ai(self, image_prompt, ts):
         filename = f'{self.image_generation_output_path}image_recipe_{ts}.png'
         # Download the image
         recipe_image_response = urlretrieve(image_url, filename)
-        return filename, image_url, recipe_image_response
+        return (filename, image_url, recipe_image_response)
     except Exception as e:
         self.logger.info("Error generating image: " + str(e))
-        return ""
+        return ("", "", "")
 
-def is_json_valid(self, json_string):
+def is_json_valid(self, json_string : str) -> bool:
     """
     Check if a JSON string is valid.
 
@@ -751,7 +850,7 @@ def is_json_valid(self, json_string):
         self.logger.info("The JSON string is not valid.")
         return False
 
-def save_response_to_db(self, response):
+def save_response_to_db(self, response : str)-> bool:
     """
     Save a response to the database.
 
@@ -762,13 +861,18 @@ def save_response_to_db(self, response):
     Returns:
         None
     """
-    # Save the response to the database
-    self.logger.info("Saving the response to the database...")
-    with open("responses.json", "a") as f:
-        self.logger.info("Successfully saved the response to the database.")
-        f.write(json.dumps(response) + "\n")
+    try:   
+        # Save the response to the database
+        self.logger.info("Saving the response to the database...")
+        with open(self.db_path + "/responses.json", "a") as f:
+            self.logger.info("Successfully saved the response to the database.")
+            f.write(json.dumps(response) + "\n")
+        return True
+    except:
+        self.logger.info("Error saving the response to the database.")
+        return False
 
-def get_ingredient_list(self):
+def get_ingredient_list(self) -> list:
     """
     Get the list of ingredients from local memory.
 
@@ -781,7 +885,7 @@ def get_ingredient_list(self):
     self.logger.info("Getting the list of ingredients from local memory...")
     # Read the items from local memory
     try:
-        with open("items.json", "r") as f:
+        with open(self.db_path + "/items.json", "r") as f:
             self.logger.info("Successfully read the list of ingredients from local memory.")
             ingredient_list = json.load(f)
     except FileNotFoundError:
@@ -790,9 +894,9 @@ def get_ingredient_list(self):
         ingredient_list = []
     return ingredient_list
 
-
-# Create an instance of RecipeManager
-recipe_manager_ai = recipe_manager_ai(credentials, configs)
-
+app = recipe_manager_ai()
 # Run the application
-recipe_response, recipe_image_response = recipe_manager_ai.main()
+recipe_response, image_url, recipe_image_response = app.main()
+
+#create the only the text for readme
+
