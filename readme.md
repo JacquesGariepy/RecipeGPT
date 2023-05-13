@@ -1,7 +1,27 @@
 # Recipe Generator Application - RecipeAI
 
 #### Description:
-The Recipe Generator Application is a Python-based application that uses natural language processing and AI technologies to generate personalized recipes based on available ingredients. The application utilizes OpenAI's ChatGPT API and DALL-E to generate unique and creative recipes. 
+The Recipe Generator Application is a Python-based application that uses prompt engineering, natural language processing and AI technologies to generate personalized recipes based on available ingredients. The application utilizes OpenAI's ChatGPT API and DALL-E to generate unique and creative recipes. My goal is to create a personalized and unique recipe based on available ingredients (ingredient name, quantity, and unit of measurement), user preferences such as meal type, region, gluten-free, nationality, etc., and also to determine if the AI should be strict or lenient in ingredient selection.
+
+I hope that my project will be useful to cooking enthusiasts and inspire the use of AI in software development and new culinary creations.
+
+To achieve my goal, I followed several key steps. First, I collected examples of recipes and ingredients to serve as a test base. Then, I used prompt engineering techniques and trial and error to arrive at results that can be repeated.
+
+In terms of technical implementation, I used Python and the following libraries: OpenAI API for the natural language processing model, DALL-E for image processing, Tokenizer for text-to-token conversion to validate the token limit to use, and HTTP tool. I also used DALL-E's API to generate images of the created recipe.
+
+Currently, my application is a console-based one, but I plan to possibly migrate it to an API with FastAPI for web-based use.
+
+More about the Application :
+Once the recipe data has been properly structured and stored in a JSON format, the next step is to use this data to generate recipe preparation instructions. To do this, we will use prompt techniques to convert the stored data into written text in the form of a conversation between the assistant and the user. Prompt templates are created in JSON and introduced into the system to enable structured conversation.
+
+One of the NLP techniques we will use is Natural Language Generation (NLG), which involves using machine learning models to generate text in natural language similar to that of a native speaker. The output format is in JSON, which will allow it to be used via other applications in the future.
+
+To accomplish this, we will use natural language AI models such as OpenAI's GPT-3.5 turbo and DALL-E, which have demonstrated their ability to generate realistic text and images from input data. It is possible to select another model to limit costs or to test usability. For the purposes of accuracy, GPT-3.5 turbo is selected in this demonstration. We will train this model on pre-existing recipe data, a desired request and response format, and to learn to generate recipe preparation instructions consistently and accurately.
+
+Finally, we will integrate the API into a Python application, which will allow users to enter their recipe data in a JSON format, generate recipe preparation instructions, and physically save them in a JSON file and the image in PNG format. The application also allows for saving ingredients in memory for future use and deleting one or more ingredients.
+
+#### Project success criteria:
+We will consider the project successful if the application is capable of generating accurate and consistent recipe preparation instructions from input data, if it is easy to use and accessible to a wide audience, and if it provides a well-formatted and valid JSON output as desired.
 
 #### Video Demo:  <https://youtu.be/ZtPvRUagBa8>
 
