@@ -1,3 +1,6 @@
+## Demo
+https://youtu.be/ZtPvRUagBa8
+
 # Recipe Generator Application
 
 The Recipe Generator Application is a Python-based application that uses natural language processing and AI technologies to generate personalized recipes based on available ingredients. The application utilizes OpenAI's ChatGPT API and DALL-E to generate unique and creative recipes. 
