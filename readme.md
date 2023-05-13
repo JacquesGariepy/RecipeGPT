@@ -45,7 +45,9 @@ The database is simply a set of JSON files serving as a cache for the system. Th
 
 Step 1: Accessing the System - Start by accessing the system and choose whether to start the experience from scratch or use the ingredients already present.
 
-Step 2: Entering New Ingredients - If you choose to start from scratch, you will be prompted to enter new ingredients by typing them into the system. Exemple Chicken-200-g, potatoes-500-g, etc.
+Step 2: Entering New Ingredients - If you choose to start from scratch, you will be prompted to enter new ingredients by typing them into the system. Exemple `Chicken-200-g`
+`potatoes-500-g` 
+etc.
 
 Step 3: Submitting the Recipe - Once you have entered the ingredients, you can submit the recipe by following the prompts. The AI will generate a recipe based on the ingredients you have entered.
 
@@ -62,14 +64,14 @@ Exemple recipe json response from model :
 `
 
 ## Future modifications
-Future modifications to the application may include adding additional AI models to generate recipes, incorporating user feedback to improve recipe recommendations, and integrating with external APIs to retrieve ingredient and nutritional information.
+- Future modifications to the application may include adding additional AI models to generate recipes, incorporating user feedback to improve recipe recommendations, and integrating with external APIs to retrieve ingredient and nutritional information.
 
-The system can prompt the user for feedback on the recipe, such as whether they like it, what changes they would make, and any additional ingredients they would like to include. This feedback can be used to further refine the recipe recommendation algorithm.
+- The system can prompt the user for feedback on the recipe, such as whether they like it, what changes they would make, and any additional ingredients they would like to include. This feedback can be used to further refine the recipe recommendation algorithm.
 
-Using Langchain
-Using gpt4all or other open source model
-Using the nltk (Natural Language Toolkit) library https://www.nltk.org/ for our application. 
-using FastApi to create a Python API
-using uvicorn for the ASGI web server implementation for Python. 
-Using React to call the Python API.
+- Using Langchain
+- Using gpt4all or other open source model
+- Using the nltk (Natural Language Toolkit) library https://www.nltk.org/ for our application. 
+- using FastApi to create a Python API
+- Using uvicorn for the ASGI web server implementation for Python. 
+- Using React to call the Python API.
 
