@@ -45,7 +45,9 @@ The database is simply a set of JSON files serving as a cache for the system. Th
 
 Step 1: Accessing the System - Start by accessing the system and choose whether to start the experience from scratch or use the ingredients already present.
 
-Step 2: Entering New Ingredients - If you choose to start from scratch, you will be prompted to enter new ingredients by typing them into the system. Exemple Chicken-200-g, potatoes-500-g, etc.
+Step 2: Entering New Ingredients - If you choose to start from scratch, you will be prompted to enter new ingredients by typing them into the system. Exemple `Chicken-200-g`
+`potatoes-500-g` 
+etc.
 
 Step 3: Submitting the Recipe - Once you have entered the ingredients, you can submit the recipe by following the prompts. The AI will generate a recipe based on the ingredients you have entered.
 
