@@ -1,4 +1,4 @@
-# RecipeGPT
+8# RecipeGPT
 
 #### Description:
 The RecipeGPT is a Python-based application that uses prompt engineering, natural language processing and AI technologies to generate personalized recipes based on available ingredients. The application utilizes OpenAI's ChatGPT API and DALL-E to generate unique and creative recipes. My goal is to create a personalized and unique recipe based on available ingredients (ingredient name, quantity, and unit of measurement), user preferences such as meal type, region, gluten-free, nationality, etc., and also to determine if the AI should be strict or lenient in ingredient selection.
@@ -28,11 +28,14 @@ We will consider the project successful if the application is capable of generat
 ## Installation
 
 To install the Recipe Generator Application, you can use conda to install the required dependencies from the `requirements.txt` file:
+```
+conda create --name recipe-generator python=3.8
 
-`conda create --name recipe-generator python=3.8`
-`conda activate recipe-generator`
-`pip install -r requirements.txt`
+conda activate recipe-generator
 
+pip install -r requirements.txt
+
+```
 ## OpenAI
 ### To create an OpenAI API key, follow these steps:
 
